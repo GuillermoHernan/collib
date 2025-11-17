@@ -2,8 +2,17 @@
 #include <map>
 #include <chrono>
 #include <random>
+#include <unordered_map>
 
 #include "btree.h"
+
+// Estructura para almacenar resultados
+struct BenchmarkResult {
+    std::string map_name;
+    size_t map_size;
+    std::string operation;
+    double duration_ms;
+};
 
 // Adaptador genérico para obtener begin
 template <typename Map>
@@ -64,130 +73,174 @@ template <typename Entry>
 inline auto get_value(const Entry& e) -> decltype(e.value) {
     return e.value;
 }
-// Benchmark de inserción
-template <typename Map, typename Key, typename Value>
-void benchmark_insertion(size_t n, const char* map_name) {
-    Map m;
+
+
+template <typename MapType, typename Key, typename Value>
+BenchmarkResult run_insertion(size_t n, const std::string& name) {
+    MapType m;
     auto start = std::chrono::high_resolution_clock::now();
-    for (size_t i = 0; i < n; ++i) {
+    for (size_t i = 0; i < n; ++i)
         map_insert(m, static_cast<Key>(i), static_cast<Value>(i));
-    }
     auto end = std::chrono::high_resolution_clock::now();
-    double duration = std::chrono::duration<double, std::milli>(end - start).count();
-    std::cout << "Benchmark inserción (" << map_name << ") - " << n << " elementos: "
-        << duration << " ms" << std::endl;
+    return { name, n, "insertion", std::chrono::duration<double, std::milli>(end - start).count() };
 }
 
-// Benchmark inserción con claves aleatorias
-template <typename Map, typename Key, typename Value>
-void benchmark_insertion_random(size_t n, const char* map_name, uint64_t seed = 12345) {
-    Map m;
-    std::mt19937_64 rng(seed);
+template <typename MapType, typename Key, typename Value>
+BenchmarkResult run_insertion_random(size_t n, const std::string& name) {
+    std::mt19937_64 rng(12345);
     std::uniform_int_distribution<Key> dist(0, static_cast<Key>(n * 10));
-
     std::vector<Key> keys(n);
-    for (size_t i = 0; i < n; ++i) {
-        keys[i] = dist(rng);
-    }
+    for (size_t i = 0; i < n; ++i) keys[i] = dist(rng);
 
+    MapType m;
     auto start = std::chrono::high_resolution_clock::now();
-    for (size_t i = 0; i < n; ++i) {
+    for (size_t i = 0; i < n; ++i)
         map_insert(m, keys[i], static_cast<Value>(i));
-    }
     auto end = std::chrono::high_resolution_clock::now();
-    double duration = std::chrono::duration<double, std::milli>(end - start).count();
-
-    std::cout << "Benchmark inserción aleatoria (" << map_name << ") - " << n << " elementos: "
-        << duration << " ms" << std::endl;
+    return { name, n, "insertion_random", std::chrono::duration<double, std::milli>(end - start).count() };
 }
 
-// Benchmark de búsqueda
-template <typename Map, typename Key>
-void benchmark_find(size_t n, const char* map_name) {
-    Map m;
-    // Insertamos previamente los elementos
-    for (size_t i = 0; i < n; ++i) {
+template <typename MapType, typename Key>
+BenchmarkResult run_find(size_t n, const std::string& name) {
+    MapType m;
+    for (size_t i = 0; i < n; ++i)
         map_insert(m, static_cast<Key>(i), static_cast<Key>(i));
-    }
 
-    size_t found_count = 0;
+    std::mt19937_64 rng(12345);
+    std::uniform_int_distribution<Key> dist(0, static_cast<Key>(n - 1));
+    size_t found = 0;
+
     auto start = std::chrono::high_resolution_clock::now();
     for (size_t i = 0; i < n; ++i) {
-        if (map_find(m, static_cast<Key>(i))) {
-            ++found_count;
+        Key key = dist(rng);
+        if (map_find(m, key)) {
+            ++found;
         }
     }
     auto end = std::chrono::high_resolution_clock::now();
-    double duration = std::chrono::duration<double, std::milli>(end - start).count();
-    std::cout << "Benchmark búsqueda (" << map_name << ") - " << n << " elementos, encontrados: " << found_count << " en "
-        << duration << " ms" << std::endl;
+
+    // Usar volatile found para evitar optimizaciones agresivas, aunque no requerido aquí
+    volatile auto dummy = found;
+
+    return { name, n, "find", std::chrono::duration<double, std::milli>(end - start).count() };
 }
 
-// Benchmark de borrado
-template <typename Map, typename Key>
-void benchmark_erase(size_t n, const char* map_name) {
-    Map m;
-    // Insertamos previamente los elementos
-    for (size_t i = 0; i < n; ++i) {
+template <typename MapType, typename Key>
+BenchmarkResult run_erase(size_t n, const std::string& name) {
+    MapType m;
+    for (size_t i = 0; i < n; ++i)
         map_insert(m, static_cast<Key>(i), static_cast<Key>(i));
-    }
 
-    size_t erased_count = 0;
+    size_t erased = 0;
     auto start = std::chrono::high_resolution_clock::now();
-    for (size_t i = 0; i < n; ++i) {
-        if (map_erase(m, static_cast<Key>(i))) {
-            ++erased_count;
-        }
+    for (size_t i = 0; i < n; ++i)
+    {
+        if (map_erase(m, static_cast<Key>(i)))
+            ++erased;
     }
     auto end = std::chrono::high_resolution_clock::now();
-    double duration = std::chrono::duration<double, std::milli>(end - start).count();
-    std::cout << "Benchmark borrado (" << map_name << ") - " << n << " elementos, borrados: " << erased_count << " en "
-        << duration << " ms" << std::endl;
+    return { name, n, "erase", std::chrono::duration<double, std::milli>(end - start).count() };
 }
 
-// Benchmark lectura secuencial usando range-based for (para std::map y BTreeMap)
-template <typename Map>
-void benchmark_sequential_read(size_t n, const char* map_name) {
-    Map m;
-    // Insertar previamente elementos secuenciales
-    for (size_t i = 0; i < n; ++i) {
-        map_insert(m, static_cast<typename Map::key_type>(i), static_cast<typename Map::mapped_type>(i));
+template <typename MapType>
+BenchmarkResult run_seq_read(size_t n, const std::string& name) {
+    MapType m;
+    for (size_t i = 0; i < n; ++i)
+    {
+        map_insert(m, static_cast<typename MapType::key_type>(i),
+            static_cast<typename MapType::mapped_type>(i));
     }
 
-    volatile typename Map::mapped_type sink{}; // evitar optimizaciones agresivas
-
+    volatile typename MapType::mapped_type sink{};
     auto start = std::chrono::high_resolution_clock::now();
-    for (const auto& kv : m) {
+    for (const auto& kv : m)
         sink = get_value(kv);
-    }
     auto end = std::chrono::high_resolution_clock::now();
+    return { name, n, "sequential_read", std::chrono::duration<double, std::milli>(end - start).count() };
+}
+// Función variádica para ejecutar todas las pruebas para todos los mapas pasados y acumular resultados
+template <typename... Maps>
+std::vector<BenchmarkResult> run_all_benchmarks_for_size(size_t n,
+    const std::vector<std::string>& map_names, Maps&&... maps) {
+    std::vector<BenchmarkResult> results;
 
-    double duration = std::chrono::duration<double, std::milli>(end - start).count();
-    std::cout << "Benchmark lectura secuencial (range-for) (" << map_name << ") - " << n << " elementos: "
-        << duration << " ms" << std::endl;
+    auto run_for_map = [&](auto&& map_type, const std::string& name) {
+        results.push_back(run_insertion<std::decay_t<decltype(map_type)>, int, int>(n, name));
+        results.push_back(run_insertion_random<std::decay_t<decltype(map_type)>, int, int>(n, name));
+        results.push_back(run_find<std::decay_t<decltype(map_type)>, int>(n, name));
+        results.push_back(run_erase<std::decay_t<decltype(map_type)>, int>(n, name));
+        results.push_back(run_seq_read<std::decay_t<decltype(map_type)>>(n, name));
+        };
+
+    size_t idx = 0;
+    (run_for_map(std::forward<Maps>(maps), map_names[idx++]), ...);
+
+    return results;
 }
 
+// Imprime tablas con filas para cada mapa y columnas para cada tamaño, filtrando por operación
+void print_results_table(const std::vector<BenchmarkResult>& results, const std::string& operation,
+    const std::vector<std::string>& map_names, const std::vector<size_t>& map_sizes) {
+    std::cout << "\n== Resultados para operación: " << operation << " ==\n";
+
+    std::cout << std::setw(25) << "Configuración";
+    for (auto size : map_sizes)
+        std::cout << std::setw(15) << size;
+    std::cout << '\n';
+
+    for (const auto& map_name : map_names) {
+        std::cout << std::setw(25) << map_name;
+        for (auto size : map_sizes) {
+            auto it = std::find_if(results.begin(), results.end(),
+                [&](const BenchmarkResult& r) {
+                    return r.map_name == map_name && r.map_size == size && r.operation == operation;
+                });
+            if (it != results.end())
+                std::cout << std::setw(15) << it->duration_ms;
+            else
+                std::cout << std::setw(15) << "-";
+        }
+        std::cout << '\n';
+    }
+}
 
 int main() {
-    constexpr size_t N = 1'000'000;
+    std::vector<size_t> map_sizes = { 10, 100, 1000, 10000, 100000, 1000000 };
+    std::vector<std::string> map_names = {
+        "std::map"
+        , "std::unordered_map"
+        , "BTreeMap order 4"
+        , "BTreeMap order 16"
+        , "BTreeMap order 32"
+        , "BTreeMap order 64"
+        , "BTreeMap order 256"
+    };
 
-    std::cout << "Inicio benchmarks..." << std::endl;
+    using StdMap = std::map<int, int>;
+    using StdUnordered = std::unordered_map<int, int>;
+    using BTree4 = BTreeMap<int, int, 4>;
+    using BTree16 = BTreeMap<int, int, 16>;
+    using BTree32 = BTreeMap<int, int, 32>;
+    using BTree64 = BTreeMap<int, int, 64>;
+    using BTree256 = BTreeMap<int, int, 256>;
 
-    using TestStdMap = std::map<int, int>;
-    using TestBtreeMap = BTreeMap<int, int, 16>;
+    std::vector<BenchmarkResult> all_results;
 
-    benchmark_insertion<TestStdMap, int, int>(N, "std::map (secuencial)");
-    benchmark_insertion<TestBtreeMap, int, int>(N, "BTreeMap (secuencial)");
-    benchmark_insertion_random<TestStdMap, int, int>(N, "std::map (aleatorio)");
-    benchmark_insertion_random<TestBtreeMap, int, int>(N, "BTreeMap (aleatorio)");
-    benchmark_find<TestStdMap, int>(N, "std::map");
-    benchmark_find<TestBtreeMap, int>(N, "BTreeMap");
-    benchmark_erase<TestStdMap, int>(N, "std::map");
-    benchmark_erase<TestBtreeMap, int>(N, "BTreeMap");
-    benchmark_sequential_read<TestStdMap>(N, "std::map");
-    benchmark_sequential_read<TestBtreeMap>(N, "BTreeMap");
+    for (auto n : map_sizes) 
+    {
+        std::cout << "Running tests for size: " << n << " ...\n";
 
-    std::cout << "Benchmarks completados." << std::endl;
+        auto results = run_all_benchmarks_for_size(
+            n,
+            map_names,
+            StdMap{}, StdUnordered{}, BTree4{}, BTree16{}, BTree32{}, BTree64{}, BTree256{}
+        );
+        all_results.insert(all_results.end(), results.begin(), results.end());
+    }
+
+    for (auto& op : { "insertion", "insertion_random", "find", "erase", "sequential_read" }) {
+        print_results_table(all_results, op, map_names, map_sizes);
+    }
 
     return 0;
 }
