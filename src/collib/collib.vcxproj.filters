@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="src\allocator2.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\allocator2.h" />
+    <ClInclude Include="include\btree.h" />
+    <ClInclude Include="include\btree_checker.h" />
+    <ClInclude Include="include\btree_core.h" />
+  </ItemGroup>
+</Project>
