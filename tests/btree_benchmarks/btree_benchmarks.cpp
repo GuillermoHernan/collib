@@ -14,18 +14,6 @@ struct BenchmarkResult {
     double duration_ms;
 };
 
-// Adaptador genérico para obtener begin
-template <typename Map>
-inline auto map_begin(const Map& m) {
-    return m.begin();
-}
-
-// Adaptador genérico para obtener end
-template <typename Map>
-inline auto map_end(const Map& m) {
-    return m.end();
-}
-
 // Adaptador genérico para búsqueda (devuelve bool)
 template <typename Map, typename Key>
 inline bool map_find(const Map& m, const Key& key) {
@@ -158,6 +146,7 @@ BenchmarkResult run_seq_read(size_t n, const std::string& name) {
     auto end = std::chrono::high_resolution_clock::now();
     return { name, n, "sequential_read", std::chrono::duration<double, std::milli>(end - start).count() };
 }
+
 // Función variádica para ejecutar todas las pruebas para todos los mapas pasados y acumular resultados
 template <typename... Maps>
 std::vector<BenchmarkResult> run_all_benchmarks_for_size(size_t n,
@@ -189,7 +178,7 @@ void print_results_table(const std::vector<BenchmarkResult>& results, const std:
     std::cout << '\n';
 
     for (const auto& map_name : map_names) {
-        std::cout << std::setw(25) << map_name;
+        std::cout << std::setw(25) << std::setprecision(4) << map_name;
         for (auto size : map_sizes) {
             auto it = std::find_if(results.begin(), results.end(),
                 [&](const BenchmarkResult& r) {
