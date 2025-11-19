@@ -1,0 +1,135 @@
+#include "pch-collib-tests.h"
+#include "span.h"
+#include <vector>
+#include <string>
+#include <cassert>
+
+using namespace coll;
+
+TEST_CASE("Pruebas básicas de span", "[span]") {
+    int array[] = { 1, 2, 3, 4, 5 };
+    span<int> s(array, 5);
+
+    SECTION("span no vacío y tamaño correcto") {
+        REQUIRE(!s.empty());
+        REQUIRE(s.size() == 5);
+        REQUIRE(s.data() == array);
+    }
+
+    SECTION("Acceso front, back y operador []") {
+        REQUIRE(s.front() == 1);
+        REQUIRE(s.back() == 5);
+        for (size_t i = 0; i < s.size(); ++i) {
+            REQUIRE(s[i] == array[i]);
+            REQUIRE(s.at(i) == array[i]);
+        }
+    }
+
+    SECTION("Empty span desde nullptr o tamaño 0") {
+        span<int> empty1(nullptr, 0);
+        REQUIRE(empty1.empty());
+        REQUIRE(empty1.size() == 0);
+
+        span<int> empty2(nullptr, 10);
+        REQUIRE(empty2.empty());
+        REQUIRE(empty2.size() == 0);
+
+        span<int> empty3;
+        REQUIRE(empty3.empty());
+        REQUIRE(empty3.size() == 0);
+    }
+
+    SECTION("Iteración mediante range for y comparación con Sentinel") {
+        size_t count = 0;
+        for (const auto& value : s) {
+            REQUIRE(value == array[count++]);
+        }
+        REQUIRE(count == s.size());
+
+        span<int> empty(nullptr, 0);
+        REQUIRE(empty == empty.end());
+        REQUIRE(!(s == s.end()));
+        REQUIRE(s != s.end());
+        REQUIRE(!(empty != empty.end()));
+    }
+
+
+    SECTION("Incremento de iterador span") {
+        auto it = s.begin();
+        REQUIRE(*it == 1);
+        ++it;
+        REQUIRE(*it == 2);
+        it++;
+        REQUIRE(*it == 3);
+    }
+
+    SECTION("Métodos first, last y subspan") {
+        auto first3 = s.first(3);
+        REQUIRE(first3.size() == 3);
+        REQUIRE(first3[0] == 1);
+        REQUIRE(first3[2] == 3);
+
+        auto last2 = s.last(2);
+        REQUIRE(last2.size() == 2);
+        REQUIRE(last2[0] == 4);
+        REQUIRE(last2[1] == 5);
+
+        auto sub = s.subspan(1, 3);
+        REQUIRE(sub.size() == 3);
+        REQUIRE(sub[0] == 2);
+        REQUIRE(sub[2] == 4);
+
+        auto subExceed = s.subspan(10, 5);
+        REQUIRE(subExceed.empty());
+
+        auto subCountExceed = s.subspan(3, 10);
+        REQUIRE(subCountExceed.size() == 2);
+        REQUIRE(subCountExceed[0] == 4);
+        REQUIRE(subCountExceed[1] == 5);
+    }
+
+    SECTION("Métodos first y last piden más elementos que el tamaño") {
+        int smallArray[] = { 10, 20, 30 };
+        span<int> smallSpan(smallArray, 3);
+
+        auto first5 = smallSpan.first(5);
+        REQUIRE(first5.size() == 3);
+        REQUIRE(first5[0] == 10);
+        REQUIRE(first5[2] == 30);
+
+        auto last10 = smallSpan.last(10);
+        REQUIRE(last10.size() == 3);
+        REQUIRE(last10[0] == 10);
+        REQUIRE(last10[2] == 30);
+
+        auto first0 = smallSpan.first(0);
+        REQUIRE(first0.empty());
+
+        auto last0 = smallSpan.last(0);
+        REQUIRE(last0.empty());
+    }
+
+    SECTION("Pruebas de make_span") {
+        int array[] = { 10, 20, 30, 40 };
+
+        SECTION("make_span con puntero y tamaño") {
+            auto sp = make_span(array, 3);
+            REQUIRE(sp.size() == 3);
+            REQUIRE(sp.front() == 10);
+            REQUIRE(sp.back() == 30);
+        }
+
+        SECTION("make_span con dos punteros (inicio, fin)") {
+            auto sp = make_span(array, array + 4);
+            REQUIRE(sp.size() == 4);
+            REQUIRE(sp.front() == 10);
+            REQUIRE(sp.back() == 40);
+        }
+
+        SECTION("make_span con punteros iguales (span vacío)") {
+            auto sp = make_span(array + 2, array + 2);
+            REQUIRE(sp.empty());
+            REQUIRE(sp.size() == 0);
+        }
+    }
+}

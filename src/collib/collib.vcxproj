@@ -25,6 +25,7 @@
     <ClInclude Include="include\allocator2.h" />
     <ClInclude Include="include\btree.h" />
     <ClInclude Include="include\btree_checker.h" />
+    <ClInclude Include="include\span.h" />
     <ClInclude Include="src\btree_core.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
