@@ -1,27 +1,30 @@
 #include "allocator2.h"
 #include <malloc.h>
 
-struct MallocAllocator : public IAllocator
+namespace coll
 {
-	SAllocResult alloc(size_t bytes, size_t) override
+	struct MallocAllocator : public IAllocator
 	{
-		return { malloc(bytes), bytes };
-	}
+		SAllocResult alloc(size_t bytes, size_t) override
+		{
+			return { malloc(bytes), bytes };
+		}
 
-	size_t tryExpand(size_t, void*) override
+		size_t tryExpand(size_t, void*) override
+		{
+			return 0;
+		}
+
+		void free(void* buffer) override
+		{
+			::free(buffer);
+		}
+	};
+
+	IAllocator& defaultAllocator()
 	{
-		return 0;
+		static MallocAllocator sillyMallocAllocator;
+
+		return sillyMallocAllocator;
 	}
-
-	void free(void* buffer) override
-	{
-		::free(buffer);
-	}
-};
-
-IAllocator& defaultAllocator()
-{
-	static MallocAllocator sillyMallocAllocator;
-
-	return sillyMallocAllocator;
-}
+} //namespace coll

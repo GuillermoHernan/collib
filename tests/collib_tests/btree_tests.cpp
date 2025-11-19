@@ -3,6 +3,8 @@
 #include "btree.h"
 #include "btree_checker.h"
 
+using namespace coll;
+
 template <typename Map>
 static bool checkMap(const Map& map)
 {

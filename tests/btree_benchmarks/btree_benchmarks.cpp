@@ -6,6 +6,8 @@
 
 #include "btree.h"
 
+using namespace coll;
+
 // Estructura para almacenar resultados
 struct BenchmarkResult {
     std::string map_name;
