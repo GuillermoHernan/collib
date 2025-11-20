@@ -5,6 +5,7 @@
     <ClCompile Include="collib_tests_main.cpp" />
     <ClCompile Include="pch-collib-tests.cpp" />
     <ClCompile Include="span_tests.cpp" />
+    <ClCompile Include="darray_tests.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch-collib-tests.h" />
