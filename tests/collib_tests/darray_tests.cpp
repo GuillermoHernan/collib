@@ -273,92 +273,82 @@ TEST_CASE("darray: insert variantes", "[darray][insert]") {
     SECTION("insert(const_iterator, const Item&)") {
         darray<int> da = { 1, 2, 3, 5, 6 };
         const int element = 4;
-        auto it = da.insert(3, element);
+        da.insert(3, element);
         CHECK(da.size() == 6);
         CHECK(da[3] == 4);
         CHECK(da[4] == 5);
-        CHECK(*it == 4);
     }
 
     SECTION("insert(const_iterator, Item&&)") {
         darray<int> da = { 1, 3, 4, 5 };
         int val = 2;
-        auto it = da.insert(1, std::move(val)); // Insertar 2 en posición 1
+        da.insert(1, std::move(val)); // Insertar 2 en posición 1
         CHECK(da.size() == 5);
         CHECK(da[1] == 2);
-        CHECK(*it == 2);
     }
 
     SECTION("insert(const_iterator, size_t count, const Item&) con count > 0") {
         darray<int> da = { 1, 4, 5 };
-        auto it = da.insert(1, 2, 2); // Insertar dos 2s en posición 1
+        da.insert(1, 2, 2); // Insertar dos 2s en posición 1
         CHECK(da.size() == 5);
         CHECK(da[1] == 2);
         CHECK(da[2] == 2);
         CHECK(da[3] == 4);
-        CHECK(*it == 2);
     }
 
     SECTION("insert(const_iterator, size_t count, const Item&) con count == 0") {
         darray<int> da = { 1, 4, 5 };
-        auto it = da.insert(1, 0, 99); // Insertar cero veces, sin cambios
+        da.insert(1, 0, 99); // Insertar cero veces, sin cambios
         CHECK(da.size() == 3);
         CHECK(da[1] == 4);
-        CHECK(*it == 4);
     }
 
     SECTION("insert(const_iterator, std::initializer_list<Item>) con lista no vacía") {
         darray<int> da = { 1, 4, 5 };
-        auto it = da.insert(1, { 2, 2 }); // Insertar dos 2s en posición 1
+        da.insert(1, { 2, 2 }); // Insertar dos 2s en posición 1
         CHECK(da.size() == 5);
         CHECK(da[1] == 2);
         CHECK(da[2] == 2);
-        CHECK(*it == 2);
     }
 
     SECTION("insert(const_iterator, std::initializer_list<Item>) con lista vacía") {
         darray<int> da = { 1, 4, 5 };
-        auto it = da.insert(2, {}); // Insertar lista vacía, sin cambios
+        da.insert(2, {}); // Insertar lista vacía, sin cambios
         CHECK(da.size() == 3);
-        CHECK(*it == 5);
     }
 
     SECTION("insert(const_iterator, Range) con Range con size() no vacio") {
         std::vector<int> vec = { 2, 2 };
         darray<int> da = { 1, 4, 5 };
-        auto it = da.insert(1, vec);
+        da.insert(1, vec);
         CHECK(da.size() == 5);
         CHECK(da[1] == 2);
         CHECK(da[2] == 2);
-        CHECK(*it == 2);
     }
 
     SECTION("insert(const_iterator, Range) con Range con size() vacío") {
         std::vector<int> vec;
         darray<int> da = { 1, 4, 5 };
-        auto it = da.insert(1, vec);
+        da.insert(1, vec);
         CHECK(da.size() == 3);
-        CHECK(*it == 4);
     }
 
     SECTION("insert(const_iterator, Range) con Range sin size() no vacio") {
         std::forward_list<int> flist = { 2, 2 };
         darray<int> da = { 1, 4, 5 };
-        auto it = da.insert(1, flist);
+        da.insert(1, flist);
         CHECK(da.size() == 5);
         CHECK(da[0] == 1);
         CHECK(da[1] == 2);
         CHECK(da[2] == 2);
         CHECK(da[3] == 4);
-        CHECK(*it == 2);
     }
 
     SECTION("insert(const_iterator, Range) con Range sin size() vacío") {
         std::forward_list<int> flist; // lista vacía
         darray<int> da = { 1, 4, 5 };
-        auto it = da.insert(0, flist);
+        da.insert(0, flist);
         CHECK(da.size() == 3);
-        CHECK(*it == 1);
     }
 }
 
@@ -368,9 +358,9 @@ TEST_CASE("darray: emplace en posición arbitraria", "[darray][emplace]") {
     darray<std::string> da = { "uno", "tres", "cuatro" };
 
     // Emplace "dos" en posición 1
-    auto it = da.emplace(1, 3, 'd'); // construye "ddd"
+    const std::string& new_item = da.emplace(1, 3, 'd'); // construye "ddd"
 
-    CHECK(*it == "ddd"); // el nuevo elemento insertado debe ser "ddd"
+    CHECK(new_item == "ddd"); // el nuevo elemento insertado debe ser "ddd"
     CHECK(da.size() == 4);
     CHECK(da[0] == "uno");
     CHECK(da[1] == "ddd");

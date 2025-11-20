@@ -38,11 +38,10 @@ namespace coll
         using const_reference = const value_type&;
         using pointer = value_type*;
         using const_pointer = const value_type*;
-        using iterator = pointer;
-        using const_iterator = span<Item>;
+        using iterator = span<Item>;
+        using const_iterator = span<const Item>;
         using reverse_iterator = std::reverse_iterator<Item*>;
         using const_reverse_iterator = std::reverse_iterator<const Item*>;
-        using Sentinel = span<Item>::Sentinel;
 
         // Constructores
         explicit darray(IAllocator& alloc = defaultAllocator())
@@ -88,13 +87,13 @@ namespace coll
         const Item* data() const noexcept { return m_data; }
 
         // Iteradores
-        iterator begin() noexcept { return m_data; }
-        iterator end() noexcept { return m_data + m_size; }
+        iterator begin() noexcept { return make_span(m_data, m_size); }
+        iterator::Sentinel end() noexcept { return {}; }
 
-        const_iterator begin() const noexcept { return make_span(m_data, m_size); }
-        Sentinel end() const noexcept { return Sentinel(); }
-        const_iterator cbegin() const noexcept { return make_span(m_data, m_size); }
-        Sentinel cend() const noexcept { return Sentinel(); }
+        const_iterator begin() const noexcept { return span<const Item>(m_data, m_size); }
+        const_iterator::Sentinel end() const noexcept { return {}; }
+        const_iterator cbegin() const noexcept { return begin(); }
+        const_iterator::Sentinel cend() const noexcept { return {}; }
 
         reverse_iterator rbegin() noexcept
         {
@@ -131,17 +130,17 @@ namespace coll
         void clear() noexcept;
 
         // Inserciones estándar
-        iterator insert(size_t pos, const Item& value);
-        iterator insert(size_t pos, Item&& value);
-        iterator insert(size_t pos, size_t count, const Item& value);
-        iterator insert(size_t pos, std::initializer_list<Item> ilist);
+        void insert(size_t pos, const Item& value);
+        void insert(size_t pos, Item&& value);
+        void insert(size_t pos, size_t count, const Item& value);
+        void insert(size_t pos, std::initializer_list<Item> ilist);
 
         template<Range RangeType>
-        iterator insert(size_t pos, const RangeType& range) { return insert_range(pos, range); }
+        void insert(size_t pos, const RangeType& range) { return insert_range(pos, range); }
 
         // Nuevas inserciones por rango C++23
         template<Range RangeType>
-        iterator insert_range(size_t pos, const RangeType& range);
+        void insert_range(size_t pos, const RangeType& range);
 
         template<Range RangeType>
         void append_range(const RangeType& range);
@@ -150,7 +149,7 @@ namespace coll
         template<typename... Args>
         Item& emplace_back(Args&&... args);
         template<typename... Args>
-        iterator emplace(size_t pos, Args&&... args);
+        Item& emplace(size_t pos, Args&&... args);
 
         // Push/pop back
         void push_back(const Item& value);
@@ -472,7 +471,7 @@ namespace coll
     }
 
     template<typename Item>
-    typename darray<Item>::iterator darray<Item>::insert(size_t pos, const Item& value)
+    void darray<Item>::insert(size_t pos, const Item& value)
     {
         size_t index = pos;
         reallocate_if_needed(m_size + 1);
@@ -481,12 +480,10 @@ namespace coll
 
         new (m_data + index) Item(value);
         ++m_size;
-
-        return m_data + index;
     }
 
     template<typename Item>
-    typename darray<Item>::iterator darray<Item>::insert(size_t pos, Item&& value)
+    void darray<Item>::insert(size_t pos, Item&& value)
     {
         size_t index = pos;
         reallocate_if_needed(m_size + 1);
@@ -495,17 +492,15 @@ namespace coll
 
         new (m_data + index) Item(std::move(value));
         ++m_size;
-
-        return m_data + index;
     }
 
     template<typename Item>
-    typename darray<Item>::iterator darray<Item>::insert(size_t pos, size_t count, const Item& value)
+    void darray<Item>::insert(size_t pos, size_t count, const Item& value)
     {
         size_t index = pos;
 
         if (count == 0)
-            return m_data + index;
+            return;
 
         reallocate_if_needed(m_size + count);
 
@@ -516,12 +511,11 @@ namespace coll
             new (insert_pos + i) Item(value);
 
         m_size += count;
-        return insert_pos;
     }
 
     template<typename Item>
     template<Range RangeType>
-    typename darray<Item>::iterator darray<Item>::insert_range(size_t pos, const RangeType& range)
+    void darray<Item>::insert_range(size_t pos, const RangeType& range)
     {
         size_t index = pos;
 
@@ -532,7 +526,7 @@ namespace coll
             count = std::distance(std::begin(range), std::end(range));
 
         if (count == 0)
-            return m_data + index;
+            return;
 
         reallocate_if_needed(m_size + count);
         shift_right(index, count);
@@ -547,18 +541,18 @@ namespace coll
         }
         m_size += count;
 
-        return insert_pos;       
+        return;       
     }
 
     template<typename Item>
-    typename darray<Item>::iterator darray<Item>::insert(size_t pos, std::initializer_list<Item> ilist)
+    void darray<Item>::insert(size_t pos, std::initializer_list<Item> ilist)
     {
         return insert_range(pos, ilist);
     }
 
     template<typename Item>
     template<typename... Args>
-    typename darray<Item>::iterator darray<Item>::emplace(size_t pos, Args&&... args)
+    Item& darray<Item>::emplace(size_t pos, Args&&... args)
     {
         size_t index = pos;
         reallocate_if_needed(m_size + 1);
@@ -567,10 +561,10 @@ namespace coll
         shift_right(index, 1);
 
         // Construir el nuevo elemento in-place usando perfect forwarding
-        new (m_data + index) Item(std::forward<Args>(args)...);
+        Item* new_item = new (m_data + index) Item(std::forward<Args>(args)...);
         ++m_size;
 
-        return m_data + index;
+        return *new_item;
     }
 
     template<typename Item>
