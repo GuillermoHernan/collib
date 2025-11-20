@@ -566,3 +566,12 @@ TEST_CASE("darray: operator<=> comparación con otro darray y rango", "[darray][
         CHECK(da3 == da3);
     }
 }
+
+TEST_CASE("darray: reverse", "[darray][reverse]") 
+{
+    const darray<int> expected{ 24, 20, 16, 9, 6, 3 };
+    const darray<int> da{ 3, 6, 9, 16, 20, 24 };
+    const darray<int> db{ da.rbegin() };
+
+    CHECK(db == expected);
+}

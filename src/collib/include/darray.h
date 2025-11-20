@@ -40,8 +40,8 @@ namespace coll
         using const_pointer = const value_type*;
         using iterator = span<Item>;
         using const_iterator = span<const Item>;
-        using reverse_iterator = std::reverse_iterator<Item*>;
-        using const_reverse_iterator = std::reverse_iterator<const Item*>;
+        using reverse_iterator = rspan<Item>;
+        using const_reverse_iterator = rspan<const Item>;
 
         // Constructores
         explicit darray(IAllocator& alloc = defaultAllocator())
@@ -95,28 +95,13 @@ namespace coll
         const_iterator cbegin() const noexcept { return begin(); }
         const_iterator::Sentinel cend() const noexcept { return {}; }
 
-        reverse_iterator rbegin() noexcept
-        {
-            return reverse_iterator(m_data + m_size);
-        }
+        reverse_iterator rbegin() noexcept { return reverse_iterator(m_data, m_size); }
+        reverse_iterator::Sentinel rend() noexcept { return {}; }
 
-        reverse_iterator rend() noexcept
-        {
-            return reverse_iterator(m_data);
-        }
-
-        const_reverse_iterator rbegin() const noexcept
-        {
-            return const_reverse_iterator(m_data + m_size);
-        }
-
-        const_reverse_iterator rend() const noexcept
-        {
-            return const_reverse_iterator(m_data);
-        }
-
+        const_reverse_iterator rbegin() const noexcept { return const_reverse_iterator(m_data, m_size); }
+        const_reverse_iterator::Sentinel rend() const noexcept { return {}; }
         const_reverse_iterator crbegin() const noexcept { return rbegin(); }
-        const_reverse_iterator crend() const noexcept { return rend(); }
+        const_reverse_iterator::Sentinel crend() const noexcept { return rend(); }
 
         // Capacidad
         bool empty() const noexcept { return m_size == 0; }
@@ -138,7 +123,6 @@ namespace coll
         template<Range RangeType>
         void insert(size_t pos, const RangeType& range) { return insert_range(pos, range); }
 
-        // Nuevas inserciones por rango C++23
         template<Range RangeType>
         void insert_range(size_t pos, const RangeType& range);
 

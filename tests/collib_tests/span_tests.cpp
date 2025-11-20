@@ -133,3 +133,40 @@ TEST_CASE("Pruebas básicas de span", "[span]") {
         }
     }
 }
+
+TEST_CASE("Reversed span tests", "[span][reversed]") 
+{
+    int array[] = { 1, 2, 3, 4, 5 };
+    span<int> s(array, 5);
+
+    SECTION("Reverse walk")
+    {
+        int prev = std::numeric_limits<int>::max();
+
+        for (int item : s.rbegin())
+        {
+            CHECK(prev > item);
+            prev = item;
+        }
+    }
+
+    SECTION("Reversed subspan")
+    {
+        rspan<int> rev = s.rbegin().subspan(2, 2);
+        CHECK(rev.size() == 2);
+        CHECK(rev[0] == 3);
+        CHECK(rev[1] == 2);
+
+        rev = s.subspan(2, 2).rbegin();
+        CHECK(rev.size() == 2);
+        CHECK(rev[0] == 4);
+        CHECK(rev[1] == 3);
+    }
+
+    SECTION("Double reversion is the original order")
+    {
+        int index = 0;
+        for (int item : s.rbegin().rbegin())
+            CHECK(item == array[index++]);
+    }
+}
