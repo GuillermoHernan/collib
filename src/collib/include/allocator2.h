@@ -52,5 +52,28 @@ namespace coll
 		return r.buffer;
 	}
 
+	template <typename T, typename... Args>
+	T* create(IAllocator& alloc, Args&&... args)
+	{
+		void* buffer = checked_alloc<T>(alloc);
+		return new (buffer) T(std::forward<Args>(args)...);
+	}
+
+	template <typename T>
+	void destroy(IAllocator& alloc, T* obj)
+	{
+		if (obj == nullptr)
+			return;
+
+		obj->~T();
+		alloc.free(obj);
+	}
+
+	template <typename T>
+	void destroy(IAllocator& alloc, T*& obj)
+	{
+		destroy(static_cast<T* const>(obj));
+		obj = nullptr;
+	}
 
 }//namespace coll

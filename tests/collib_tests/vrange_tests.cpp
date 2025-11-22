@@ -13,7 +13,7 @@ TEST_CASE("vrange básico - construcción y acceso", "[vrange]") {
 
     SECTION("Crear vrange desde std::vector y comprobar front y empty") {
         std::vector<int> v = { 1, 2, 3 };
-        vrange<int> r(v, alloc);
+        vrange<int> r = make_range(v, alloc);
         REQUIRE(!r.empty());
         CHECK(r.front() == 1);
         CHECK(*r == 1);
@@ -21,7 +21,7 @@ TEST_CASE("vrange básico - construcción y acceso", "[vrange]") {
 
     SECTION("Crear vrange desde std::list y comprobar iteración con operator++") {
         std::list<int> l = { 10, 20, 30 };
-        vrange<int> r(l, alloc);
+        vrange<int> r = vrange<int>::from(l, alloc);
         CHECK(r.front() == 10);
         ++r;
         CHECK(r.front() == 20);
@@ -33,7 +33,7 @@ TEST_CASE("vrange básico - construcción y acceso", "[vrange]") {
 
     SECTION("Crear vrange desde std::forward_list y recorrer con while") {
         std::forward_list<int> fl = { 5, 6, 7 };
-        vrange<int> r(fl, alloc);
+        vrange<int> r = make_range(fl, alloc);
         int expected[] = { 5, 6, 7 };
         size_t idx = 0;
         while (!r.empty()) {
@@ -49,7 +49,7 @@ TEST_CASE("vrange copia y movimiento", "[vrange]") {
     std::vector<int> v = { 1, 2, 3 };
 
     SECTION("Copia") {
-        vrange<int> r1(v, alloc);
+        vrange<int> r1 = make_range(v, alloc);
         vrange<int> r2 = r1;
         CHECK(r2.front() == r1.front());
         ++r2;
@@ -65,11 +65,11 @@ TEST_CASE("vrange copia y movimiento", "[vrange]") {
     }
 
     SECTION("Operador= copia y move asignación") {
-        vrange<int> r1(v, alloc);
-        vrange<int> r2(std::list<int>{4, 5}, alloc);
+        vrange<int> r1 = make_range(v, alloc);
+        vrange<int> r2 = make_range(std::list<int>{4, 5}, alloc);
         r2 = r1;
         CHECK(r2.front() == 1);
-        vrange<int> r3(std::vector<int>{6}, alloc);
+        vrange<int> r3 = make_range(std::vector<int>{6}, alloc);
         r3 = std::move(r2);
         CHECK(r3.front() == 1);
         CHECK(r2.empty());
@@ -87,7 +87,7 @@ TEST_CASE("vrange acceso rango vacío y excepciones", "[vrange]") {
 
     SECTION("Comparar con Sentinel y vaciado tras iterar") {
         std::vector<int> v = { 1 };
-        vrange<int> r(v, alloc);
+        vrange<int> r = make_range(v, alloc);
         CHECK_FALSE(r == r.end());
         ++r;
         CHECK(r == r.end());
@@ -97,7 +97,7 @@ TEST_CASE("vrange acceso rango vacío y excepciones", "[vrange]") {
 TEST_CASE("vrange operadores y semánticas adicionales", "[vrange]") {
     IAllocator& alloc = defaultAllocator();
     std::vector<int> v = { 1, 2, 3 };
-    vrange<int> r(v, alloc);
+    vrange<int> r = make_range(v, alloc);
 
     SECTION("operator* es igual que front") {
         CHECK(*r == r.front());
@@ -121,7 +121,7 @@ TEST_CASE("vrange integrado con coll::span (forward)", "[vrange][span]") {
     int arr[] = { 10, 20, 30, 40 };
 
     span<int> sp(arr, 4);
-    vrange<int> vr(sp, alloc);
+    vrange<int> vr = make_range(sp, alloc);
 
     REQUIRE(!vr.empty());
     CHECK(vr.front() == 10);
@@ -140,7 +140,7 @@ TEST_CASE("vrange integrado con coll::span (reversed)", "[vrange][span][reverse]
 
     int arr[] = { 1, 2, 3, 4, 5 };
     span<int, true> rsp(arr, 5);
-    vrange<int> vr(rsp, alloc);
+    vrange<int> vr = make_range(rsp, alloc);
 
     REQUIRE(!vr.empty());
     CHECK(vr.front() == 5);
@@ -160,7 +160,7 @@ TEST_CASE("vrange con coll::span: operador* y comparisons", "[vrange][span]") {
     IAllocator& alloc = defaultAllocator();
     int arr[] = { 42, 43, 44 };
     span<int> sp(arr, 3);
-    vrange<int> vr(sp, alloc);
+    vrange<int> vr = make_range(sp, alloc);
 
     CHECK(*vr == vr.front());
     CHECK_FALSE(vr == vr.end());
@@ -170,12 +170,3 @@ TEST_CASE("vrange con coll::span: operador* y comparisons", "[vrange][span]") {
     CHECK(vr == vr.end());
 }
 
-//TEST_CASE("vrange con coll::span: excepciones en empty span", "[vrange][span]") {
-//    IAllocator& alloc = defaultAllocator();
-//    span<int> sp(nullptr, 0);
-//    vrange<int> vr(sp, alloc);
-//
-//    CHECK(vr.empty());
-//    CHECK_THROWS_AS(vr.front(), std::out_of_range);
-//}
-//

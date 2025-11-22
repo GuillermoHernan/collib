@@ -12,11 +12,25 @@ namespace coll
         { a.size() } -> std::convertible_to<std::size_t>;
     };
 
+    template<typename I>
+    concept SimpleIterator = requires(I it) 
+    {
+        { *it };
+        { ++it } -> std::same_as<I&>;
+    };
+
+    template<typename S, typename I>
+    concept SimpleSentinelFor = requires(S s, I i)
+    {
+        { s == i } -> std::convertible_to<bool>;
+        { s != i } -> std::convertible_to<bool>;
+    };
+
     template<typename T>
     concept Range = requires(T t)
     {
-        { std::begin(t) } -> std::input_iterator;
-        { std::end(t) } -> std::sentinel_for<decltype(std::begin(t))>;
+        { std::begin(t) } -> SimpleIterator;
+        { std::end(t) } -> SimpleSentinelFor<decltype(std::begin(t))>;
     };
 
 }// namespace coll

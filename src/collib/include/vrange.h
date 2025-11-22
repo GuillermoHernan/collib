@@ -3,6 +3,9 @@
 #include "allocator2.h"
 #include "collib_concepts.h"
 
+#include <functional>
+#include <optional>
+
 namespace coll
 {
 	// Virtual ranges. To iterate ranges without knowing the backing container.
@@ -20,11 +23,19 @@ namespace coll
         vrange() : m_inner(emptyInnerRange()) {}
 
         template <typename RangeType>
-        vrange(const RangeType& range, IAllocator& alloc = defaultAllocator())
+        static vrange from(const RangeType& range, IAllocator& alloc = defaultAllocator())
         {
             check_range_compatible<RangeType>();
-            m_inner = make_inner(range, alloc);
+
+            vrange newRange;
+            newRange.m_inner = make_inner(range, alloc);
+            return newRange;
         }
+
+        // WARNING: This is an advanced usage constructor which requires manual memory management.
+        // The range will take ownership of the 'IRange' object, and call 'destroy' when finished.
+        // IRange implementations must de-initialice AND deallocate memory on its 'destroy' method.
+        explicit vrange(IRange* range) : m_inner(range) {}
 
         vrange(const vrange& rhs) : m_inner (rhs.m_inner->clone()) {}
         vrange(vrange&& rhs) : m_inner(rhs.m_inner)
@@ -66,6 +77,14 @@ namespace coll
         bool empty() const { return m_inner->empty(); }
         vrange begin() const { return *this; }
         Sentinel end() const { return Sentinel(); }
+
+        vrange<Item> filter(std::function<bool(const Item&)>&& filterFn, IAllocator& alloc = defaultAllocator())const;
+
+        template <typename Func>
+        auto transform(
+            Func&& mapFn
+            , IAllocator& alloc = defaultAllocator()
+        )const -> vrange<decltype(mapFn(std::declval<Item>()))>;
 
         bool operator==(Sentinel) const { return empty(); }
 
@@ -227,7 +246,108 @@ namespace coll
         , IAllocator& alloc = defaultAllocator()
     )
     {
-        return vrange<typename RangeType::value_type>(range);
+        return vrange<typename RangeType::value_type>::from(range, alloc);
+    }
+
+    template <typename Item>
+    vrange<Item> vrange<Item>::filter(std::function<bool(const Item&)>&& filterFn, IAllocator& alloc)const
+    {
+        using FilterFunction = std::function<bool(const Item&)>;
+    
+        // What this function does is to create an instance of this class an put it inside a vrange.
+        // Then this class will do the filtering while walking the original range.
+        struct FilterState final : public IRange
+        {
+            FilterFunction m_filterFn;
+            vrange<Item> m_input;
+            IAllocator& m_alloc;
+
+            FilterState(const vrange<Item>& input, FilterFunction&& filterFn, IAllocator& alloc)
+                : m_filterFn(std::move(filterFn))
+                , m_input(input)
+                , m_alloc(alloc)
+            {
+                //Need to skip (potential) filtered items at the beginning.
+                if (!m_input.empty() && !m_filterFn(*m_input))
+                    next();
+            }
+
+            bool empty()const override { return m_input.empty(); }
+            const_reference front() override { return m_input.front(); }
+
+            bool next() override
+            {
+                ++m_input;
+
+                for (; !m_input.empty(); ++m_input)
+                {
+                    if (m_filterFn(*m_input))
+                        break;	//found.
+                }
+
+                return empty();
+            }
+
+            IRange* clone() override
+            {
+                return create<FilterState>(m_alloc, *this);
+            }
+
+            void destroy() override { ::destroy(m_alloc, this); }
+        };
+
+        FilterState* state = create<FilterState>(alloc, *this, std::move(filterFn), alloc);
+        return vrange(state);
+    }
+
+    template <class Item>
+    template <typename Func>
+    auto vrange<Item>::transform(
+        Func&& mapFn
+        , IAllocator& alloc
+    )const -> vrange<decltype(mapFn(std::declval<Item>()))>
+    {
+        using OutputItem = decltype(mapFn(std::declval<Item>()));
+        using MapFunction = Func;
+        using IBaseRange = vrange<OutputItem>::IRange;
+
+        struct TransformState final: public IBaseRange
+        {
+            MapFunction m_mapFn;
+            vrange<Item> m_input;
+            mutable std::optional<OutputItem> m_output;
+            IAllocator& m_alloc;
+
+            TransformState(const vrange<Item>& input, MapFunction&& mapFn, IAllocator& alloc)
+                : m_mapFn(std::move(mapFn))
+                , m_input(input)
+                , m_alloc(alloc)
+            {
+            }
+
+            bool empty()const override { return m_input.empty(); }
+            const OutputItem& front() override
+            {
+                m_output.emplace(m_mapFn(*m_input));
+                return m_output.value();
+            }
+
+            bool next() override
+            {
+                ++m_input;
+                return empty();
+            }
+
+            IRange* clone() override
+            {
+                return create<TransformState>(m_alloc, *this);
+            }
+
+            void destroy() override { ::destroy(m_alloc, this); }
+        };
+        
+        IBaseRange* state = create<TransformState>(alloc, *this, std::move(mapFn), alloc);
+        return vrange<OutputItem>(state);
     }
 
 }// namespace coll
