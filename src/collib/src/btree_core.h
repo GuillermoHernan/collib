@@ -553,8 +553,6 @@ namespace coll
         size_t m_size = 0;
         unsigned m_height;
 
-
-        template <typename T> void* alloc();
         template <typename T> void freeNode(T* ptr);
         void createInitialRootIfNeeded();
 
@@ -626,16 +624,6 @@ namespace coll
     // ------------------------------------------------------------
     template<typename Key, BTreeCoreParams Params>
     template <typename T>
-    void* BTreeCore<Key, Params>::alloc()
-    {
-        SAllocResult res = m_alloc->alloc(sizeof(T), alignof(T));
-        if (!res.buffer)
-            throw std::bad_alloc();
-        return res.buffer;
-    }
-
-    template<typename Key, BTreeCoreParams Params>
-    template <typename T>
     void BTreeCore<Key, Params>::freeNode(T* ptr)
     {
         if (ptr)
@@ -653,7 +641,7 @@ namespace coll
 
         assert(m_height == 0);
 
-        void* mem_block = alloc<NodeLeaf>();
+        void* mem_block = checked_alloc<NodeLeaf>(*m_alloc);
         m_root = new (mem_block) NodeLeaf(nullptr, nullptr);
         m_height = 1;
     }
@@ -709,13 +697,13 @@ namespace coll
     template<typename Key, BTreeCoreParams Params>
     typename BTreeCore<Key, Params>::NodeLeaf* BTreeCore<Key, Params>::split_leaf(NodeLeaf* leaf)
     {
-        return leaf->split(alloc<NodeLeaf>());
+        return leaf->split(checked_alloc<NodeLeaf>(*m_alloc));
     }
 
     template<typename Key, BTreeCoreParams Params>
     typename BTreeCore<Key, Params>::SplitInternalResult BTreeCore<Key, Params>::split_internal(NodeInternal* node)
     {
-        void* mem_block = alloc<NodeInternal>();
+        void* mem_block = checked_alloc<NodeInternal>(*m_alloc);
         return node->split(mem_block);
     }
 
@@ -803,7 +791,7 @@ namespace coll
 
         if (result.split.has_value())
         {
-            void* mem_block = alloc<NodeInternal>();
+            void* mem_block = checked_alloc<NodeInternal>(*m_alloc);
             NodeInternal* new_root = new (mem_block)NodeInternal(
                 m_root
                 , std::move(result.split->separator)

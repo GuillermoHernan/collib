@@ -1,37 +1,21 @@
 #pragma once
 
 #include <compare>
-#include <concepts>
 #include <cstddef>
 #include <initializer_list>
-#include <iterator>
 #include <utility>
-//#include <memory>
 
 #include "span.h"
 #include "allocator2.h"
+#include "collib_concepts.h"
 
 namespace coll
 {
-    template<typename T>
-    concept HasSize = requires(T a)
-    {
-        { a.size() } -> std::convertible_to<std::size_t>;
-    };
-
-    template<typename T>
-    concept Range = requires(T t)
-    {
-        { std::begin(t) } -> std::input_iterator;
-        { std::end(t) } -> std::sentinel_for<decltype(std::begin(t))>;
-    };
-
     template<typename Item>
     class darray {
     public:
         // Sub-types
         using value_type = Item;
-        using allocator_type = std::allocator<Item>;
         using size_type = size_t;
         using difference_type = std::ptrdiff_t;
         using reference = value_type&;

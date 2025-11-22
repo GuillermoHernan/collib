@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <exception>
 
 namespace coll
 {
@@ -39,5 +40,17 @@ namespace coll
 	};
 
 	IAllocator& defaultAllocator();
+
+	template <class T>
+	void* checked_alloc(IAllocator& alloc)
+	{
+		const SAllocResult r = alloc.alloc(sizeof(T), alignof(T));
+
+		if (r.buffer == nullptr)
+			throw std::bad_alloc();
+
+		return r.buffer;
+	}
+
 
 }//namespace coll

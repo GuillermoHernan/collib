@@ -10,5 +10,7 @@
     <ClInclude Include="src\btree_core.h" />
     <ClInclude Include="include\span.h" />
     <ClInclude Include="include\darray.h" />
+    <ClInclude Include="include\vrange.h" />
+    <ClInclude Include="include\collib_concepts.h" />
   </ItemGroup>
 </Project>
