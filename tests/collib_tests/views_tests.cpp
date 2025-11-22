@@ -31,51 +31,7 @@ TEST_CASE("filter_view")
 		CHECK(expected == filtered);
 	}
 
-	//SECTION("Empty", "[filter_view][empty]")
-	//{
-	//	vrange<int> empty;
-	//	darray<int> expected {};
-
-	//	vrange<int> filtered = csl::filter_view<int>(empty.begin(), [](int x) {return x % 3 == 0; });
-
-	//	CHECK(sequence_equals(expected.begin(), filtered.begin()));
-	//}
 }
-
-
-//TEST_CASE("transform_view")
-//{
-//	SECTION("Transform view", "[transform_view]")
-//	{
-//		darray<int> data = { 3, 70, 27, 14, 9, 42, 43, 1048576 };
-//		darray<std::string> expected = { "3", "70", "27", "14", "9", "42", "43", "1048576" };
-//		
-//		vrange<std::string> transformed = csl::transform_view<int, std::string>(data.begin(), [](int x)->std::string
-//			{
-//				return std::to_std::string(x);
-//			});
-//
-//		CHECK(sequence_equals(expected.begin(), transformed.begin()));
-//	}
-//}
-
-
-//TEST_CASE("Chained transform")
-//{
-//	SECTION("Chained transform", "[chain_operator]")
-//	{
-//		darray<int> data = { 3, 70, 28, 14, 9, 42, 43, 7340032 };
-//		darray<std::string> expected = { "10", "4", "2", "6", "1048576" };
-//
-//		vrange<std::string> transformed = 
-//			data.begin()
-//			| csl::filter_view<int>([](int x) { return (x % 7) == 0; })
-//			| csl::transform_view<int, int>([](int x){ return x/7; })
-//			| csl::transform_view<int, std::string>([](int x){ return std::to_std::string(x); });
-//
-//		CHECK(sequence_equals(expected.begin(), transformed.begin()));
-//	}
-//}
 
 TEST_CASE("filter")
 {
