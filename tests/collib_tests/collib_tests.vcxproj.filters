@@ -9,9 +9,11 @@
     <ClCompile Include="vrange_tests.cpp" />
     <ClCompile Include="views_tests.cpp" />
     <ClCompile Include="mem_check_fixture.cpp" />
+    <ClCompile Include="life_cycle_object.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch-collib-tests.h" />
     <ClInclude Include="mem_check_fixture.h" />
+    <ClInclude Include="life_cycle_object.h" />
   </ItemGroup>
 </Project>

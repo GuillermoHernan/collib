@@ -5,7 +5,7 @@
 class MemCheckFixture
 {
 public:
-    MemCheckFixture() : m_holder(m_dalloc) {}
+    MemCheckFixture();
     ~MemCheckFixture();
 
 private:
