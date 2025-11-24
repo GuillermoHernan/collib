@@ -8,8 +8,10 @@
     <ClCompile Include="darray_tests.cpp" />
     <ClCompile Include="vrange_tests.cpp" />
     <ClCompile Include="views_tests.cpp" />
+    <ClCompile Include="mem_check_fixture.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch-collib-tests.h" />
+    <ClInclude Include="mem_check_fixture.h" />
   </ItemGroup>
 </Project>

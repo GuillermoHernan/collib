@@ -2,6 +2,7 @@
 
 #include "btree.h"
 #include "btree_checker.h"
+#include "mem_check_fixture.h"
 
 using namespace coll;
 
@@ -17,32 +18,8 @@ static bool checkMap(const Map& map)
     return report.empty();
 }
 
-class BTreeTests
+class BTreeTests : public MemCheckFixture
 {
-public:
-    BTreeTests() : m_holder(m_dalloc) {}
-
-    ~BTreeTests()
-    {
-        CHECK(checkLeaks(m_dalloc));
-    }
-
-    static bool checkLeaks(const DebugAllocator& dalloc)
-    {
-        if (dalloc.liveAllocationsCount() > 0)
-        {
-            std::ostringstream message;
-            message << "Memory leaks detected:\n";
-            dalloc.reportLiveAllocations(message);
-            WARN(message.str());
-        }
-
-        return dalloc.liveAllocationsCount() == 0;
-    }
-private:
-    DebugAllocator m_dalloc;
-    AllocatorHolder m_holder;
-
 };
 
 TEST_CASE_METHOD(BTreeTests, "Pruebas básicas de BTreeMap", "[std_map]") 

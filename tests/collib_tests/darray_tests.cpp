@@ -1,11 +1,16 @@
 #include "pch-collib-tests.h"
 #include "darray.h"
+#include "mem_check_fixture.h"
+
 #include <list>
 #include <string>
 
 using namespace coll;
 
-TEST_CASE("Pruebas básicas de darray", "[darray]") {
+class DarrayTests : public MemCheckFixture
+{};
+
+TEST_CASE_METHOD(DarrayTests, "Pruebas básicas de darray", "[darray]") {
     IAllocator& alloc = defaultAllocator();
 
     SECTION("Constructor sin elementos crea array vacío") {
@@ -93,7 +98,7 @@ TEST_CASE("Pruebas básicas de darray", "[darray]") {
     }
 }
 
-TEST_CASE("darray: Constructor con rango fuente sin size()", "[darray][constructor][range]") {
+TEST_CASE_METHOD(DarrayTests, "darray: Constructor con rango fuente sin size()", "[darray][constructor][range]") {
     IAllocator& alloc = defaultAllocator();
 
     std::forward_list<int> sourceList = { 10, 20, 30, 40 };
@@ -108,7 +113,7 @@ TEST_CASE("darray: Constructor con rango fuente sin size()", "[darray][construct
     }
 }
 
-TEST_CASE("darray: Constructor con rango fuente sin size()", "[darray]") {
+TEST_CASE_METHOD(DarrayTests, "darray: Constructor con rango fuente sin size()", "[darray]") {
     std::list<int> sourceList = { 10, 20, 30 }; // std::list no tiene size() accesible en misma forma que vector
     darray<int> da(sourceList);
     CHECK(da.size() == sourceList.size());
@@ -118,7 +123,7 @@ TEST_CASE("darray: Constructor con rango fuente sin size()", "[darray]") {
     }
 }
 
-TEST_CASE("darray: Operador= copia mismo objeto no hace nada", "[darray]") {
+TEST_CASE_METHOD(DarrayTests, "darray: Operador= copia mismo objeto no hace nada", "[darray]") {
     IAllocator& alloc = defaultAllocator();
     darray<int> da(3, alloc);
     da[0] = 1; da[1] = 2; da[2] = 3;
@@ -130,7 +135,7 @@ TEST_CASE("darray: Operador= copia mismo objeto no hace nada", "[darray]") {
     CHECK(da[2] == 3);
 }
 
-TEST_CASE("darray: Operador= copia objeto diferente", "[darray]") {
+TEST_CASE_METHOD(DarrayTests, "darray: Operador= copia objeto diferente", "[darray]") {
     IAllocator& alloc = defaultAllocator();
     darray<int> da1(3, alloc);
     da1[0] = 1; da1[1] = 2; da1[2] = 3;
@@ -143,7 +148,7 @@ TEST_CASE("darray: Operador= copia objeto diferente", "[darray]") {
     CHECK(da2[2] == 3);
 }
 
-TEST_CASE("Operador de asignación copia darray (sobrescribir objeto existente)", "[darray]") {
+TEST_CASE_METHOD(DarrayTests, "Operador de asignación copia darray (sobrescribir objeto existente)", "[darray]") {
     IAllocator& alloc = defaultAllocator();
 
     darray<int> da1(3, alloc);
@@ -166,7 +171,7 @@ TEST_CASE("Operador de asignación copia darray (sobrescribir objeto existente)"
     CHECK(da2[2] == 44);
 }
 
-TEST_CASE("Operador de movimiento darray", "[darray]") {
+TEST_CASE_METHOD(DarrayTests, "Operador de movimiento darray", "[darray]") {
     IAllocator& alloc = defaultAllocator();
 
     SECTION("Mover darray transfiere recursos correctamente (construcción)") {
@@ -209,7 +214,7 @@ TEST_CASE("Operador de movimiento darray", "[darray]") {
     }
 }
 
-TEST_CASE("darray: Accesos fuera de rango lanzan excepciones", "[darray]") {
+TEST_CASE_METHOD(DarrayTests, "darray: Accesos fuera de rango lanzan excepciones", "[darray]") {
     IAllocator& alloc = defaultAllocator();
     darray<int> da(3, alloc);
     for (size_t i = 0; i < 3; ++i)
@@ -223,7 +228,7 @@ TEST_CASE("darray: Accesos fuera de rango lanzan excepciones", "[darray]") {
     CHECK_THROWS_AS(empty.back(), std::out_of_range);
 }
 
-TEST_CASE("darray: Métodos para añadir datos (push_back y emplace_back)", "[darray][push_back][emplace_back]") {
+TEST_CASE_METHOD(DarrayTests, "darray: Métodos para añadir datos (push_back y emplace_back)", "[darray][push_back][emplace_back]") {
     IAllocator& alloc = defaultAllocator();
     darray<std::string> da(alloc);
 
@@ -267,7 +272,7 @@ TEST_CASE("darray: Métodos para añadir datos (push_back y emplace_back)", "[da
     }
 }
 
-TEST_CASE("darray: insert variantes", "[darray][insert]") {
+TEST_CASE_METHOD(DarrayTests, "darray: insert variantes", "[darray][insert]") {
     IAllocator& alloc = defaultAllocator();
 
     SECTION("insert(const_iterator, const Item&)") {
@@ -352,7 +357,7 @@ TEST_CASE("darray: insert variantes", "[darray][insert]") {
     }
 }
 
-TEST_CASE("darray: emplace en posición arbitraria", "[darray][emplace]") {
+TEST_CASE_METHOD(DarrayTests, "darray: emplace en posición arbitraria", "[darray][emplace]") {
     IAllocator& alloc = defaultAllocator();
 
     darray<std::string> da = { "uno", "tres", "cuatro" };
@@ -368,7 +373,7 @@ TEST_CASE("darray: emplace en posición arbitraria", "[darray][emplace]") {
     CHECK(da[3] == "cuatro");
 }
 
-TEST_CASE("darray: append_range con rangos con y sin size", "[darray][append_range]") {
+TEST_CASE_METHOD(DarrayTests, "darray: append_range con rangos con y sin size", "[darray][append_range]") {
     IAllocator& alloc = defaultAllocator();
 
     SECTION("append_range con std::vector (con size())") {
@@ -402,7 +407,7 @@ TEST_CASE("darray: append_range con rangos con y sin size", "[darray][append_ran
     }
 }
 
-TEST_CASE("darray: pop_back elimina el último elemento", "[darray][pop_back]") {
+TEST_CASE_METHOD(DarrayTests, "darray: pop_back elimina el último elemento", "[darray][pop_back]") {
     IAllocator& alloc = defaultAllocator();
 
     darray<int> da = { 1, 2, 3, 4 };
@@ -425,7 +430,7 @@ TEST_CASE("darray: pop_back elimina el último elemento", "[darray][pop_back]") 
     CHECK_THROWS_AS(da.pop_back(), std::out_of_range);
 }
 
-TEST_CASE("darray: swap intercambia dos darrays", "[darray][swap]") {
+TEST_CASE_METHOD(DarrayTests, "darray: swap intercambia dos darrays", "[darray][swap]") {
     IAllocator& alloc = defaultAllocator();
 
     darray<int> da1 = { 1, 2, 3 };
@@ -443,7 +448,7 @@ TEST_CASE("darray: swap intercambia dos darrays", "[darray][swap]") {
     CHECK(da2[2] == 3);
 }
 
-TEST_CASE("darray: resize cambia tamaño y valores correctamente", "[darray][resize]") {
+TEST_CASE_METHOD(DarrayTests, "darray: resize cambia tamaño y valores correctamente", "[darray][resize]") {
     IAllocator& alloc = defaultAllocator();
 
     SECTION("resize aumenta tamaño con valor por defecto") {
@@ -485,7 +490,7 @@ TEST_CASE("darray: resize cambia tamaño y valores correctamente", "[darray][res
     }
 }
 
-TEST_CASE("darray: assign - tamaño y valor", "[darray][assign]") {
+TEST_CASE_METHOD(DarrayTests, "darray: assign - tamaño y valor", "[darray][assign]") {
     darray<int> da;
     da.assign(5, 42);
     REQUIRE(da.size() == 5);
@@ -493,7 +498,7 @@ TEST_CASE("darray: assign - tamaño y valor", "[darray][assign]") {
         REQUIRE(da[i] == 42);
 }
 
-TEST_CASE("darray: assign - initializer_list", "[darray][assign]") {
+TEST_CASE_METHOD(DarrayTests, "darray: assign - initializer_list", "[darray][assign]") {
     darray<int> da;
     da.assign({ 1, 2, 3, 4 });
     REQUIRE(da.size() == 4);
@@ -503,7 +508,7 @@ TEST_CASE("darray: assign - initializer_list", "[darray][assign]") {
     REQUIRE(da[3] == 4);
 }
 
-TEST_CASE("darray: assign - rango", "[darray][assign]") {
+TEST_CASE_METHOD(DarrayTests, "darray: assign - rango", "[darray][assign]") {
     std::vector<int> v = { 10, 20, 30 };
     darray<int> da;
     da.assign(v);
@@ -513,21 +518,21 @@ TEST_CASE("darray: assign - rango", "[darray][assign]") {
     REQUIRE(da[2] == 30);
 }
 
-TEST_CASE("darray: assign - asignación con count == 0 vacía", "[darray][assign]") {
+TEST_CASE_METHOD(DarrayTests, "darray: assign - asignación con count == 0 vacía", "[darray][assign]") {
     darray<int> da = { 1, 2, 3, 4 };
     da.assign(0, 42);
     REQUIRE(da.size() == 0);
     REQUIRE(da.empty());
 }
 
-TEST_CASE("darray: assign - asignación con initializer_list vacío", "[darray][assign]") {
+TEST_CASE_METHOD(DarrayTests, "darray: assign - asignación con initializer_list vacío", "[darray][assign]") {
     darray<int> da = { 1, 2, 3, 4 };
     da.assign({});
     REQUIRE(da.size() == 0);
     REQUIRE(da.empty());
 }
 
-TEST_CASE("darray: operator<=> comparación con otro darray y rango", "[darray][compare]") {
+TEST_CASE_METHOD(DarrayTests, "darray: operator<=> comparación con otro darray y rango", "[darray][compare]") {
 
     darray<int> da1 = { 1, 2, 3 };
     darray<int> da2 = { 1, 2, 3 };
@@ -567,7 +572,7 @@ TEST_CASE("darray: operator<=> comparación con otro darray y rango", "[darray][
     }
 }
 
-TEST_CASE("darray: reverse", "[darray][reverse]") 
+TEST_CASE_METHOD(DarrayTests, "darray: reverse", "[darray][reverse]") 
 {
     const darray<int> expected{ 24, 20, 16, 9, 6, 3 };
     const darray<int> da{ 3, 6, 9, 16, 20, 24 };

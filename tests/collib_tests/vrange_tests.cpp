@@ -1,5 +1,6 @@
 #include "pch-collib-tests.h"
 
+#include "mem_check_fixture.h"
 #include "span.h"
 #include "vrange.h"
 
@@ -8,7 +9,11 @@
 
 using namespace coll;
 
-TEST_CASE("vrange básico - construcción y acceso", "[vrange]") {
+class VRangeTests : public MemCheckFixture
+{
+};
+
+TEST_CASE_METHOD(VRangeTests, "vrange básico - construcción y acceso", "[vrange]") {
     IAllocator& alloc = defaultAllocator();
 
     SECTION("Crear vrange desde std::vector y comprobar front y empty") {
@@ -44,7 +49,7 @@ TEST_CASE("vrange básico - construcción y acceso", "[vrange]") {
     }
 }
 
-TEST_CASE("vrange copia y movimiento", "[vrange]") {
+TEST_CASE_METHOD(VRangeTests, "vrange copia y movimiento", "[vrange]") {
     IAllocator& alloc = defaultAllocator();
     std::vector<int> v = { 1, 2, 3 };
 
@@ -76,7 +81,7 @@ TEST_CASE("vrange copia y movimiento", "[vrange]") {
     }
 }
 
-TEST_CASE("vrange acceso rango vacío y excepciones", "[vrange]") {
+TEST_CASE_METHOD(VRangeTests, "vrange acceso rango vacío y excepciones", "[vrange]") {
     IAllocator& alloc = defaultAllocator();
 
     SECTION("vrange vacío front() lanza excepción") {
@@ -94,7 +99,7 @@ TEST_CASE("vrange acceso rango vacío y excepciones", "[vrange]") {
     }
 }
 
-TEST_CASE("vrange operadores y semánticas adicionales", "[vrange]") {
+TEST_CASE_METHOD(VRangeTests, "vrange operadores y semánticas adicionales", "[vrange]") {
     IAllocator& alloc = defaultAllocator();
     std::vector<int> v = { 1, 2, 3 };
     vrange<int> r = make_range(v, alloc);
@@ -115,7 +120,7 @@ TEST_CASE("vrange operadores y semánticas adicionales", "[vrange]") {
     }
 }
 
-TEST_CASE("vrange integrado con coll::span (forward)", "[vrange][span]") {
+TEST_CASE_METHOD(VRangeTests, "vrange integrado con coll::span (forward)", "[vrange][span]") {
     IAllocator& alloc = defaultAllocator();
 
     int arr[] = { 10, 20, 30, 40 };
@@ -135,7 +140,7 @@ TEST_CASE("vrange integrado con coll::span (forward)", "[vrange][span]") {
     CHECK(vr.empty());
 }
 
-TEST_CASE("vrange integrado con coll::span (reversed)", "[vrange][span][reverse]") {
+TEST_CASE_METHOD(VRangeTests, "vrange integrado con coll::span (reversed)", "[vrange][span][reverse]") {
     IAllocator& alloc = defaultAllocator();
 
     int arr[] = { 1, 2, 3, 4, 5 };
@@ -156,7 +161,7 @@ TEST_CASE("vrange integrado con coll::span (reversed)", "[vrange][span][reverse]
     CHECK(vr.empty());
 }
 
-TEST_CASE("vrange con coll::span: operador* y comparisons", "[vrange][span]") {
+TEST_CASE_METHOD(VRangeTests, "vrange con coll::span: operador* y comparisons", "[vrange][span]") {
     IAllocator& alloc = defaultAllocator();
     int arr[] = { 42, 43, 44 };
     span<int> sp(arr, 3);

@@ -1,11 +1,17 @@
 #include "pch-collib-tests.h"
 
 #include "darray.h"
+#include "mem_check_fixture.h"
 #include "vrange.h"
 
 using namespace coll;
 
-TEST_CASE("filter_view")
+class ViewTests : public MemCheckFixture
+{
+};
+
+
+TEST_CASE_METHOD(ViewTests,  "filter_view")
 {
 	SECTION("Filter view", "[filter_view]")
 	{
@@ -33,7 +39,7 @@ TEST_CASE("filter_view")
 
 }
 
-TEST_CASE("filter")
+TEST_CASE_METHOD(ViewTests,  "filter")
 {
 	SECTION("Filter function", "[filter]")
 	{
@@ -84,7 +90,7 @@ TEST_CASE("filter")
 }
 
 
-TEST_CASE("transform")
+TEST_CASE_METHOD(ViewTests,  "transform")
 {
 	SECTION("Transform function", "[transform]")
 	{
@@ -98,7 +104,7 @@ TEST_CASE("transform")
 }
 
 
-TEST_CASE("Cascade transform")
+TEST_CASE_METHOD(ViewTests,  "Cascade transform")
 {
 	SECTION("Cascade chained transform", "[chain]")
 	{

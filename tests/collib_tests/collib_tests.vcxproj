@@ -27,6 +27,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="darray_tests.cpp" />
+    <ClCompile Include="mem_check_fixture.cpp" />
     <ClCompile Include="pch-collib-tests.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
@@ -38,6 +39,7 @@
     <ClCompile Include="vrange_tests.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="mem_check_fixture.h" />
     <ClInclude Include="pch-collib-tests.h" />
   </ItemGroup>
   <ItemGroup>
