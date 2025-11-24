@@ -17,7 +17,36 @@ static bool checkMap(const Map& map)
     return report.empty();
 }
 
-TEST_CASE("Pruebas básicas de BTreeMap", "[std_map]") {
+class BTreeTests
+{
+public:
+    BTreeTests() : m_holder(m_dalloc) {}
+
+    ~BTreeTests()
+    {
+        CHECK(checkLeaks(m_dalloc));
+    }
+
+    static bool checkLeaks(const DebugAllocator& dalloc)
+    {
+        if (dalloc.liveAllocationsCount() > 0)
+        {
+            std::ostringstream message;
+            message << "Memory leaks detected:\n";
+            dalloc.reportLiveAllocations(message);
+            WARN(message.str());
+        }
+
+        return dalloc.liveAllocationsCount() == 0;
+    }
+private:
+    DebugAllocator m_dalloc;
+    AllocatorHolder m_holder;
+
+};
+
+TEST_CASE_METHOD(BTreeTests, "Pruebas básicas de BTreeMap", "[std_map]") 
+{
     BTreeMap<int, std::string> m;
 
     SECTION("Inserción y acceso básico") {
@@ -73,9 +102,12 @@ TEST_CASE("Pruebas básicas de BTreeMap", "[std_map]") {
         REQUIRE(m.at(1) == "uno");
         REQUIRE_THROWS_AS(m.at(99), std::out_of_range);
     }
+
+    m.clear();
 }
 
-TEST_CASE("Constructores y operadores de BTreeMap", "[std_map][copy_move]") {
+TEST_CASE_METHOD(BTreeTests, "Constructores y operadores de BTreeMap", "[std_map][copy_move]") 
+{
     SECTION("Constructor copia") {
         BTreeMap<int, std::string> original{ {1, "uno"}, {2, "dos"} };
         BTreeMap<int, std::string> copia(original);
@@ -107,7 +139,8 @@ TEST_CASE("Constructores y operadores de BTreeMap", "[std_map][copy_move]") {
     }
 }
 
-TEST_CASE("Recorrido con range for de BTreeMap: valores, directo e inverso", "[std_map][iteration]") {
+TEST_CASE_METHOD(BTreeTests, "Recorrido con range for de BTreeMap: valores, directo e inverso", "[std_map][iteration]") 
+{
     BTreeMap<int, std::string> m{
         {1, "uno"},
         {3, "tres"},
@@ -141,7 +174,8 @@ TEST_CASE("Recorrido con range for de BTreeMap: valores, directo e inverso", "[s
     }
 }
 
-TEST_CASE("BTreeMap clear()", "[std_map][clear]") {
+TEST_CASE_METHOD(BTreeTests, "BTreeMap clear()", "[std_map][clear]") 
+{
     BTreeMap<int, std::string> m = {
         {1, "uno"},
         {2, "dos"},
@@ -167,7 +201,8 @@ TEST_CASE("BTreeMap clear()", "[std_map][clear]") {
     REQUIRE(m.size() == 0);
 }
 
-TEST_CASE("BTreeMap insert, emplace y try_emplace", "[std_map][insert][emplace][try_emplace]") {
+TEST_CASE_METHOD(BTreeTests, "BTreeMap insert, emplace y try_emplace", "[std_map][insert][emplace][try_emplace]")
+{
     BTreeMap<int, std::string> m;
 
     SECTION("insert con par clave-valor") {
@@ -195,25 +230,10 @@ TEST_CASE("BTreeMap insert, emplace y try_emplace", "[std_map][insert][emplace][
         REQUIRE(result.location.value() == "dos");
         REQUIRE(modificado == "modificado"); // no se movió 'modificado'
     }
-    // No hay try_emplace. 'emplace' lo hace bien y punto.
-#if 0
-    SECTION("try_emplace construye solo si clave no existe") {
-        auto result = m.try_emplace(3, "tres");
-        REQUIRE(result.inserted == true);
-        REQUIRE(result.location.key() == 3);
-        REQUIRE(result.location.value() == "tres");
-
-        // Clave existe: no se modifica el valor y no se mueve el argumento
-        std::string valor_original = "tres";
-        auto result2 = m.try_emplace(3, std::move(valor_original));
-        REQUIRE(result2.inserted == false);
-        REQUIRE(result2.location.value() == "tres");
-        REQUIRE(valor_original.empty() == false); // no se movió valor_original
-    }
-#endif
 }
 
-TEST_CASE("BTreeMap insert_or_assign()", "[std_map][insert_or_assign]") {
+TEST_CASE_METHOD(BTreeTests, "BTreeMap insert_or_assign()", "[std_map][insert_or_assign]")
+{
     BTreeMap<int, std::string> m;
 
     // Inserción de un nuevo elemento
@@ -239,7 +259,7 @@ TEST_CASE("BTreeMap insert_or_assign()", "[std_map][insert_or_assign]") {
 }
 
 #if 0
-TEST_CASE("BTreeMap insert(range) desde iteradores", "[std_map][insert_range]") {
+TEST_CASE_METHOD(BTreeTests, "BTreeMap insert(range) desde iteradores", "[std_map][insert_range]") {
     BTreeMap<int, std::string> m{
         {1, "uno"},
         {4, "cuatro"}
@@ -262,7 +282,7 @@ TEST_CASE("BTreeMap insert(range) desde iteradores", "[std_map][insert_range]") 
     CHECK(m[5] == "cinco");       // nuevo insertado
 }
 
-TEST_CASE("BTreeMap erase()", "[std_map][erase]") {
+TEST_CASE_METHOD(BTreeTests, "BTreeMap erase()", "[std_map][erase]") {
     BTreeMap<int, std::string> m{
         {1, "uno"},
         {2, "dos"},
@@ -305,7 +325,7 @@ TEST_CASE("BTreeMap erase()", "[std_map][erase]") {
     }
 }
 
-TEST_CASE("BTreeMap merge()", "[std_map][merge]") {
+TEST_CASE_METHOD(BTreeTests, "BTreeMap merge()", "[std_map][merge]") {
     BTreeMap<int, std::string> destino{
         {1, "uno"},
         {2, "dos"}
@@ -329,7 +349,8 @@ TEST_CASE("BTreeMap merge()", "[std_map][merge]") {
     CHECK(fuente[2] == "dos_fuente");
 }
 #endif
-TEST_CASE("BTreeMap find() y contains()", "[std_map][find][contains]") {
+TEST_CASE_METHOD(BTreeTests, "BTreeMap find() y contains()", "[std_map][find][contains]")
+{
     BTreeMap<int, std::string> m{
         {1, "uno"},
         {2, "dos"},
@@ -374,7 +395,8 @@ private:
     std::string m_text;
 };
 
-TEST_CASE("Prueba el árbol con una clave que sólo cumple requisitos mínimos", "[std_map][simple_key]") {
+TEST_CASE_METHOD(BTreeTests, "Prueba el árbol con una clave que sólo cumple requisitos mínimos", "[std_map][simple_key]") 
+{
     BTreeMap<SimpleKey, int> m{
         {"uno", 1},
         {"dos", 2},
@@ -402,7 +424,7 @@ TEST_CASE("Prueba el árbol con una clave que sólo cumple requisitos mínimos",
     }
 }
 
-TEST_CASE("BTreeMap inserciones masivas: provoca división de nodos hojas e internos", "[btree][split_nodes]") {
+TEST_CASE_METHOD(BTreeTests, "BTreeMap inserciones masivas: provoca división de nodos hojas e internos", "[btree][split_nodes]") {
     BTreeMap<int, std::string> m;
 
     const int total_insertions = 50;
@@ -425,9 +447,46 @@ TEST_CASE("BTreeMap inserciones masivas: provoca división de nodos hojas e inte
     CHECK(m.rbegin().key() == total_insertions);
 }
 
+TEST_CASE_METHOD(BTreeTests, "BTreeMap: random inserts", "[btree][split_nodes][random]") 
+{
+    BTreeMap<int, std::string, 4> m;
+    const int count = 1024;
 
-TEST_CASE("BTreeMap borrados masivos con reequilibrado", "[btree][erase][rebalance]") {
-    BTreeMap<int, std::string> m;
+    std::mt19937_64 rng(12345);
+    std::uniform_int_distribution<int> dist(0, count * 5);
+
+    for (size_t i = 0; i < count; ++i)
+    {
+        const int value = dist(rng);
+        m[value] = std::to_string(value);
+    }
+
+    CHECK(checkMap(m));
+}
+
+TEST_CASE_METHOD(BTreeTests, "BTreeMap: Interleaved inserts to expose bug", "[btree][bug][linked_list]")
+{
+    // This test is designed to expose a bug found inserting nodes, that leaf nodes linked list was not
+    // updated properly.
+    BTreeMap<int, int, 4> m;
+
+    auto insertSeq = [&m](int start, int count)
+        {
+            for (int i = start; i < start + count; ++i)
+                m[i] = i * 5 + 23;
+        };
+
+    insertSeq(0, 8);
+    insertSeq(32, 8);
+    CHECK(checkMap(m));
+
+    insertSeq(16, 8);
+    CHECK(checkMap(m));
+}
+
+TEST_CASE_METHOD(BTreeTests, "BTreeMap borrados masivos con reequilibrado", "[btree][erase][rebalance]") 
+{
+    BTreeMap<int, std::string, 4> m;
     const int total_insertions = 40;
 
     for (int i = 0; i < total_insertions; ++i)
@@ -446,7 +505,7 @@ TEST_CASE("BTreeMap borrados masivos con reequilibrado", "[btree][erase][rebalan
 
     CHECK(checkMap(m));
 
-    // Borrar intercaladamente para forzar fusiones o redistribuciones
+    // This erase pattern will trigger rebalances, but no merges.
     for (int i = 0; i < total_insertions; i += 2)
     {
         INFO("Deleting node: " << i);
@@ -454,16 +513,12 @@ TEST_CASE("BTreeMap borrados masivos con reequilibrado", "[btree][erase][rebalan
     }
 
     REQUIRE(m.size() == total_insertions / 2);
-
-    // Comprobar integridad del orden tras borrados
     CHECK(checkMap(m));
 
+    // This second round of erases will trigger some merges.
     for (int i = 3; i < total_insertions; i += 3)
-    {
         m.erase(i);
-    }
 
-    // Comprobar integridad del orden tras borrados
     CHECK(checkMap(m));
 
     int previo = -1;
@@ -480,7 +535,7 @@ TEST_CASE("BTreeMap borrados masivos con reequilibrado", "[btree][erase][rebalan
     CHECK(m.contains(5));
 }
 
-TEST_CASE("BTreeMap borrados masivos con reequilibrado: Segmentos grandes del árbol", "[btree][erase][rebalance]")
+TEST_CASE_METHOD(BTreeTests, "BTreeMap borrados masivos con reequilibrado: Segmentos grandes del árbol", "[btree][erase][rebalance]")
 {
     BTreeMap<int, int> m;
     const int total = 4096;
@@ -519,8 +574,7 @@ TEST_CASE("BTreeMap borrados masivos con reequilibrado: Segmentos grandes del á
     CHECK(checkMap(m));
 }
 
-
-TEST_CASE("BTreeMap prueba estrés: inserciones, borrados y reinserciones", "[btree][stress]") {
+TEST_CASE_METHOD(BTreeTests, "BTreeMap prueba estrés: inserciones, borrados y reinserciones", "[btree][stress]") {
     BTreeMap<int, int> m;
     const int total = 2000;
 
@@ -556,4 +610,3 @@ TEST_CASE("BTreeMap prueba estrés: inserciones, borrados y reinserciones", "[bt
             CHECK(!it);
     }
 }
-

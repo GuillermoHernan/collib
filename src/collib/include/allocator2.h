@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <exception>
+#include <iosfwd>
 
 namespace coll
 {
@@ -41,6 +42,31 @@ namespace coll
 
 	IAllocator& defaultAllocator();
 
+	/* 
+	 * Temporarily sets a given allocator as the current default for the duration of this object's scope.
+	 *
+	 * - On construction: pushes the supplied allocator onto a stack, making it the active default.
+	 * - On destruction: pops the allocator from the stack, restoring the previous default.
+	 *
+	 * IMPORTANT: AllocatorHolder does not own or manage the lifetime of the allocator it references.
+	 * The caller must guarantee that the allocator remains valid for as long as it is set as default.
+	 *
+	 * If multiple AllocatorHolder instances are active, the most recently created is the current default.
+	 * The default allocator is managed as a stack: each holder pushes on entry, pops on exit.
+	 */
+	class AllocatorHolder
+	{
+	public:
+		AllocatorHolder(IAllocator& alloc);
+
+		~AllocatorHolder() { pop(); }
+		void pop();
+
+	private:
+		IAllocator* m_alloc;
+		size_t m_position;
+	};
+
 	template <class T>
 	void* checked_alloc(IAllocator& alloc)
 	{
@@ -69,11 +95,32 @@ namespace coll
 		alloc.free(obj);
 	}
 
-	template <typename T>
-	void destroy(IAllocator& alloc, T*& obj)
+	// DebugAllocator, to help to find and fix memory leaks.
+	class DebugAllocator final: public IAllocator
 	{
-		destroy(static_cast<T* const>(obj));
-		obj = nullptr;
-	}
+	public:
+		explicit DebugAllocator(IAllocator& alloc = defaultAllocator());
+		~DebugAllocator();
+
+		// IAllocator implementation
+		SAllocResult alloc(size_t bytes, size_t align) override;
+		size_t tryExpand(size_t bytes, void* ptr) override;
+		void free(void* ptr) override;
+		///////////////////////
+
+		size_t liveAllocationsCount() const;
+
+		std::ostream& reportLiveAllocations(std::ostream& os) const;
+
+	private:
+		struct SInternal;
+		SInternal* m_int;
+		IAllocator& m_alloc;
+
+		// Impide copia y asignación para evitar problemas de doble liberación
+		DebugAllocator(const DebugAllocator&) = delete;
+		DebugAllocator& operator=(const DebugAllocator&) = delete;
+	};
+
 
 }//namespace coll

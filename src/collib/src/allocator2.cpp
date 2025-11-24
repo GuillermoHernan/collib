@@ -1,9 +1,15 @@
 #include "allocator2.h"
+#include "btree.h"
+#include "darray.h"
+
+#include <iostream>
 #include <malloc.h>
 
 namespace coll
 {
-	struct MallocAllocator : public IAllocator
+    thread_local darray<IAllocator*> tl_defaultAllocators;
+        
+    struct MallocAllocator : public IAllocator
 	{
 		SAllocResult alloc(size_t bytes, size_t) override
 		{
@@ -25,6 +31,95 @@ namespace coll
 	{
 		static MallocAllocator sillyMallocAllocator;
 
-		return sillyMallocAllocator;
+        if (tl_defaultAllocators.empty())
+            return sillyMallocAllocator;
+        else
+            return *tl_defaultAllocators.back();
 	}
+
+    struct DebugAllocator::SInternal
+    {
+        BTreeMap<void*, size_t, 32> allocations;
+    };
+
+    DebugAllocator::DebugAllocator(IAllocator& alloc)
+        : m_int(create<SInternal>(alloc))
+        , m_alloc(alloc)
+    {
+    }
+
+    DebugAllocator::~DebugAllocator()
+    {
+        destroy(m_alloc, m_int);
+    }
+
+    SAllocResult DebugAllocator::alloc(size_t bytes, size_t align)
+    {
+        SAllocResult result = m_alloc.alloc(bytes, align);
+        
+        if (result.buffer != nullptr)
+            m_int->allocations.insert_or_assign(result.buffer, result.bytes);
+
+        return result;
+    }
+
+    size_t DebugAllocator::tryExpand(size_t bytes, void* ptr)
+    {
+        const size_t newSize = m_alloc.tryExpand(bytes, ptr);
+
+        if (newSize > bytes)
+            m_int->allocations[ptr] = newSize;
+
+        return newSize;
+    }
+
+    void DebugAllocator::free(void* ptr)
+    {
+        if (ptr == nullptr)
+            return;
+
+        m_alloc.free(ptr);
+        m_int->allocations.erase(ptr);
+    }
+
+    size_t DebugAllocator::liveAllocationsCount() const
+    {
+        return m_int->allocations.size();
+    }
+
+    std::ostream& DebugAllocator::reportLiveAllocations(std::ostream& os) const
+    {
+        // CSV header
+        os << "address;size_bytes\n";
+
+        for (const auto& [ptr, size] : m_int->allocations)
+        {
+            os << "0x" << std::hex << reinterpret_cast<uintptr_t>(ptr)
+                << std::dec << ";" << size << "\n";
+        }
+
+        return os;
+    }
+
+
+    AllocatorHolder::AllocatorHolder(IAllocator& alloc) : m_alloc(&alloc)
+    {
+        m_position = tl_defaultAllocators.size();
+        tl_defaultAllocators.push_back(m_alloc);
+    }
+
+    void AllocatorHolder::pop()
+    {
+        if (m_alloc != nullptr)
+        {
+            if (m_position < tl_defaultAllocators.size())
+                tl_defaultAllocators[m_position] = nullptr;
+
+            while (!tl_defaultAllocators.empty() && tl_defaultAllocators.back() == nullptr)
+                tl_defaultAllocators.pop_back();
+
+            m_alloc = nullptr;
+        }
+    }
+
 } //namespace coll

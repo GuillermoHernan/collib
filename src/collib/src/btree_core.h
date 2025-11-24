@@ -309,13 +309,11 @@ namespace coll
 
         struct NodeLeaf : public Node
         {
-            NodeLeaf* prev;
-            NodeLeaf* next;
+            NodeLeaf* prev = nullptr;
+            NodeLeaf* next = nullptr;
             AlignedValueStorage values[Order];
 
-            NodeLeaf(NodeLeaf* prev_, NodeLeaf* next_)
-                : prev(prev_), next(next_)
-            {}
+            NodeLeaf() = default;
 
             NodeLeaf(const NodeLeaf&) = delete;
             NodeLeaf& operator=(const NodeLeaf&) = delete;
@@ -323,14 +321,39 @@ namespace coll
             void unlink()
             {
                 if (prev)
+                {
+                    assert(prev->next == this);
                     prev->next = next;
+                }
 
                 if (next)
+                {
+                    assert(next->prev == this);
                     next->prev = prev;
+                }
+
+                prev = nullptr;
+                next = nullptr;
+            }
+
+            void insert_after(NodeLeaf* left)
+            {
+                assert(prev == nullptr);
+                assert(next == nullptr);
+                assert(left != nullptr);
+
+                NodeLeaf* right = left->next;
+
+                prev = left;
+                left->next = this;
+
+                next = right;
+                if (right)
+                    right->prev = this;
             }
 
             // Note: No deallocation is performed!
-            NodeLeaf* mergeRight()
+            NodeLeaf* merge_right()
             {
                 auto* left = this;
                 auto* right = this->next;
@@ -354,7 +377,7 @@ namespace coll
             NodeLeaf* split(void* mem_block)
             {
                 size_t mid = this->count() / 2;
-                NodeLeaf* sibling = new (mem_block)NodeLeaf(this, this->next);
+                NodeLeaf* sibling = new (mem_block)NodeLeaf;
                 const size_t sibling_count = this->count() - mid;
 
                 for (size_t i = 0; i < sibling_count; ++i)
@@ -367,9 +390,8 @@ namespace coll
                         Params.DestroyValueFn(this->values[mid + i].data);
                     }
                 }
-
                 this->resize_keys(mid);
-                this->next = sibling;
+                sibling->insert_after(this);
 
                 return sibling;
             }
@@ -440,7 +462,7 @@ namespace coll
                 this->remove(lastIndex);
             }
 
-        };
+        };// struct NodeLeaf
 
         struct NodeInternal : public Node
         {
@@ -642,7 +664,7 @@ namespace coll
         assert(m_height == 0);
 
         void* mem_block = checked_alloc<NodeLeaf>(*m_alloc);
-        m_root = new (mem_block) NodeLeaf(nullptr, nullptr);
+        m_root = new (mem_block) NodeLeaf;
         m_height = 1;
     }
 
@@ -1140,7 +1162,7 @@ namespace coll
     {
         auto* left = static_cast<NodeLeaf*> (parent->children[parentIndex]);
     
-        auto* right = left->mergeRight();
+        auto* right = left->merge_right();
         freeNode(right);
 
         parent->remove_right(parentIndex);

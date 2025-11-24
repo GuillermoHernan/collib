@@ -3,6 +3,7 @@
 #include "../src/btree_core.h"
 
 #include <cstddef>
+#include <stdexcept>
 
 namespace coll
 {
