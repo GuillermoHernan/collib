@@ -13,19 +13,22 @@ class VRangeTests : public MemCheckFixture
 {
 };
 
-TEST_CASE_METHOD(VRangeTests, "vrange básico - construcción y acceso", "[vrange]") {
+TEST_CASE_METHOD(VRangeTests, "vrange básico - construcción y acceso", "[vrange]")
+{
     IAllocator& alloc = defaultAllocator();
 
-    SECTION("Crear vrange desde std::vector y comprobar front y empty") {
-        std::vector<int> v = { 1, 2, 3 };
+    SECTION("Crear vrange desde std::vector y comprobar front y empty")
+    {
+        std::vector<int> v = {1, 2, 3};
         vrange<int> r = make_range(v, alloc);
         REQUIRE(!r.empty());
         CHECK(r.front() == 1);
         CHECK(*r == 1);
     }
 
-    SECTION("Crear vrange desde std::list y comprobar iteración con operator++") {
-        std::list<int> l = { 10, 20, 30 };
+    SECTION("Crear vrange desde std::list y comprobar iteración con operator++")
+    {
+        std::list<int> l = {10, 20, 30};
         vrange<int> r = vrange<int>::from(l, alloc);
         CHECK(r.front() == 10);
         ++r;
@@ -36,12 +39,14 @@ TEST_CASE_METHOD(VRangeTests, "vrange básico - construcción y acceso", "[vrang
         CHECK(r.empty());
     }
 
-    SECTION("Crear vrange desde std::forward_list y recorrer con while") {
-        std::forward_list<int> fl = { 5, 6, 7 };
+    SECTION("Crear vrange desde std::forward_list y recorrer con while")
+    {
+        std::forward_list<int> fl = {5, 6, 7};
         vrange<int> r = make_range(fl, alloc);
-        int expected[] = { 5, 6, 7 };
+        int expected[] = {5, 6, 7};
         size_t idx = 0;
-        while (!r.empty()) {
+        while (!r.empty())
+        {
             CHECK(r.front() == expected[idx++]);
             ++r;
         }
@@ -49,11 +54,13 @@ TEST_CASE_METHOD(VRangeTests, "vrange básico - construcción y acceso", "[vrang
     }
 }
 
-TEST_CASE_METHOD(VRangeTests, "vrange copia y movimiento", "[vrange]") {
+TEST_CASE_METHOD(VRangeTests, "vrange copia y movimiento", "[vrange]")
+{
     IAllocator& alloc = defaultAllocator();
-    std::vector<int> v = { 1, 2, 3 };
+    std::vector<int> v = {1, 2, 3};
 
-    SECTION("Copia") {
+    SECTION("Copia")
+    {
         vrange<int> r1 = make_range(v, alloc);
         vrange<int> r2 = r1;
         CHECK(r2.front() == r1.front());
@@ -62,36 +69,41 @@ TEST_CASE_METHOD(VRangeTests, "vrange copia y movimiento", "[vrange]") {
         CHECK(!r1.empty()); // r1 original no cambiado
     }
 
-    SECTION("Movimiento") {
+    SECTION("Movimiento")
+    {
         auto r1 = make_range(v, alloc);
         vrange<int> r2 = std::move(r1);
         CHECK(r2.front() == 1);
         CHECK(r1.empty()); // r1 queda vacío tras move
     }
 
-    SECTION("Operador= copia y move asignación") {
+    SECTION("Operador= copia y move asignación")
+    {
         vrange<int> r1 = make_range(v, alloc);
-        vrange<int> r2 = make_range(std::list<int>{4, 5}, alloc);
+        vrange<int> r2 = make_range(std::list<int> {4, 5}, alloc);
         r2 = r1;
         CHECK(r2.front() == 1);
-        vrange<int> r3 = make_range(std::vector<int>{6}, alloc);
+        vrange<int> r3 = make_range(std::vector<int> {6}, alloc);
         r3 = std::move(r2);
         CHECK(r3.front() == 1);
         CHECK(r2.empty());
     }
 }
 
-TEST_CASE_METHOD(VRangeTests, "vrange acceso rango vacío y excepciones", "[vrange]") {
+TEST_CASE_METHOD(VRangeTests, "vrange acceso rango vacío y excepciones", "[vrange]")
+{
     IAllocator& alloc = defaultAllocator();
 
-    SECTION("vrange vacío front() lanza excepción") {
+    SECTION("vrange vacío front() lanza excepción")
+    {
         vrange<int> r;
         CHECK(r.empty());
         CHECK_THROWS_AS(r.front(), std::out_of_range);
     }
 
-    SECTION("Comparar con Sentinel y vaciado tras iterar") {
-        std::vector<int> v = { 1 };
+    SECTION("Comparar con Sentinel y vaciado tras iterar")
+    {
+        std::vector<int> v = {1};
         vrange<int> r = make_range(v, alloc);
         CHECK_FALSE(r == r.end());
         ++r;
@@ -99,16 +111,16 @@ TEST_CASE_METHOD(VRangeTests, "vrange acceso rango vacío y excepciones", "[vran
     }
 }
 
-TEST_CASE_METHOD(VRangeTests, "vrange operadores y semánticas adicionales", "[vrange]") {
+TEST_CASE_METHOD(VRangeTests, "vrange operadores y semánticas adicionales", "[vrange]")
+{
     IAllocator& alloc = defaultAllocator();
-    std::vector<int> v = { 1, 2, 3 };
+    std::vector<int> v = {1, 2, 3};
     vrange<int> r = make_range(v, alloc);
 
-    SECTION("operator* es igual que front") {
-        CHECK(*r == r.front());
-    }
+    SECTION("operator* es igual que front") { CHECK(*r == r.front()); }
 
-    SECTION("operator++ retorna referencia y copia") {
+    SECTION("operator++ retorna referencia y copia")
+    {
         vrange<int> r2 = r;
         vrange<int>& ref = (++r2);
         CHECK(ref.front() == 2);
@@ -120,10 +132,11 @@ TEST_CASE_METHOD(VRangeTests, "vrange operadores y semánticas adicionales", "[v
     }
 }
 
-TEST_CASE_METHOD(VRangeTests, "vrange integrado con coll::span (forward)", "[vrange][span]") {
+TEST_CASE_METHOD(VRangeTests, "vrange integrado con coll::span (forward)", "[vrange][span]")
+{
     IAllocator& alloc = defaultAllocator();
 
-    int arr[] = { 10, 20, 30, 40 };
+    int arr[] = {10, 20, 30, 40};
 
     span<int> sp(arr, 4);
     vrange<int> vr = make_range(sp, alloc);
@@ -140,10 +153,11 @@ TEST_CASE_METHOD(VRangeTests, "vrange integrado con coll::span (forward)", "[vra
     CHECK(vr.empty());
 }
 
-TEST_CASE_METHOD(VRangeTests, "vrange integrado con coll::span (reversed)", "[vrange][span][reverse]") {
+TEST_CASE_METHOD(VRangeTests, "vrange integrado con coll::span (reversed)", "[vrange][span][reverse]")
+{
     IAllocator& alloc = defaultAllocator();
 
-    int arr[] = { 1, 2, 3, 4, 5 };
+    int arr[] = {1, 2, 3, 4, 5};
     span<int, true> rsp(arr, 5);
     vrange<int> vr = make_range(rsp, alloc);
 
@@ -161,9 +175,10 @@ TEST_CASE_METHOD(VRangeTests, "vrange integrado con coll::span (reversed)", "[vr
     CHECK(vr.empty());
 }
 
-TEST_CASE_METHOD(VRangeTests, "vrange con coll::span: operador* y comparisons", "[vrange][span]") {
+TEST_CASE_METHOD(VRangeTests, "vrange con coll::span: operador* y comparisons", "[vrange][span]")
+{
     IAllocator& alloc = defaultAllocator();
-    int arr[] = { 42, 43, 44 };
+    int arr[] = {42, 43, 44};
     span<int> sp(arr, 3);
     vrange<int> vr = make_range(sp, alloc);
 
@@ -174,4 +189,3 @@ TEST_CASE_METHOD(VRangeTests, "vrange con coll::span: operador* y comparisons", 
     ++vr;
     CHECK(vr == vr.end());
 }
-

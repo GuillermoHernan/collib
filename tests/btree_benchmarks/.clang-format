@@ -1,0 +1,24 @@
+BasedOnStyle: WebKit
+IndentWidth: 4
+ColumnLimit: 105
+PointerAlignment: Left
+
+AllowShortFunctionsOnASingleLine: All
+AllowShortBlocksOnASingleLine: Empty
+
+BreakBeforeBraces: Allman
+BreakTemplateDeclarations: Yes
+
+BinPackParameters: false
+BinPackArguments: false
+AlignAfterOpenBracket: BlockIndent
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowAllArgumentsOnNextLine: false
+
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+
+Cpp11BracedListStyle: true
+
+PackConstructorInitializers: Never
+
+SortIncludes: false

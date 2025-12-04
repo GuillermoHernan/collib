@@ -1,31 +1,36 @@
 #include "pch-collib-tests.h"
 #include "span.h"
-#include <vector>
-#include <string>
 #include <cassert>
+#include <string>
+#include <vector>
 
 using namespace coll;
 
-TEST_CASE("Pruebas básicas de span", "[span]") {
-    int array[] = { 1, 2, 3, 4, 5 };
+TEST_CASE("Pruebas básicas de span", "[span]")
+{
+    int array[] = {1, 2, 3, 4, 5};
     span<int> s(array, 5);
 
-    SECTION("span no vacío y tamaño correcto") {
+    SECTION("span no vacío y tamaño correcto")
+    {
         REQUIRE(!s.empty());
         REQUIRE(s.size() == 5);
         REQUIRE(s.data() == array);
     }
 
-    SECTION("Acceso front, back y operador []") {
+    SECTION("Acceso front, back y operador []")
+    {
         REQUIRE(s.front() == 1);
         REQUIRE(s.back() == 5);
-        for (size_t i = 0; i < s.size(); ++i) {
+        for (size_t i = 0; i < s.size(); ++i)
+        {
             REQUIRE(s[i] == array[i]);
             REQUIRE(s.at(i) == array[i]);
         }
     }
 
-    SECTION("Empty span desde nullptr o tamaño 0") {
+    SECTION("Empty span desde nullptr o tamaño 0")
+    {
         span<int> empty1(nullptr, 0);
         REQUIRE(empty1.empty());
         REQUIRE(empty1.size() == 0);
@@ -39,9 +44,11 @@ TEST_CASE("Pruebas básicas de span", "[span]") {
         REQUIRE(empty3.size() == 0);
     }
 
-    SECTION("Iteración mediante range for y comparación con Sentinel") {
+    SECTION("Iteración mediante range for y comparación con Sentinel")
+    {
         size_t count = 0;
-        for (const auto& value : s) {
+        for (const auto& value : s)
+        {
             REQUIRE(value == array[count++]);
         }
         REQUIRE(count == s.size());
@@ -53,8 +60,8 @@ TEST_CASE("Pruebas básicas de span", "[span]") {
         REQUIRE(!(empty != empty.end()));
     }
 
-
-    SECTION("Incremento de iterador span") {
+    SECTION("Incremento de iterador span")
+    {
         auto it = s.begin();
         REQUIRE(*it == 1);
         ++it;
@@ -63,7 +70,8 @@ TEST_CASE("Pruebas básicas de span", "[span]") {
         REQUIRE(*it == 3);
     }
 
-    SECTION("Métodos first, last y subspan") {
+    SECTION("Métodos first, last y subspan")
+    {
         auto first3 = s.first(3);
         REQUIRE(first3.size() == 3);
         REQUIRE(first3[0] == 1);
@@ -88,8 +96,9 @@ TEST_CASE("Pruebas básicas de span", "[span]") {
         REQUIRE(subCountExceed[1] == 5);
     }
 
-    SECTION("Métodos first y last piden más elementos que el tamaño") {
-        int smallArray[] = { 10, 20, 30 };
+    SECTION("Métodos first y last piden más elementos que el tamaño")
+    {
+        int smallArray[] = {10, 20, 30};
         span<int> smallSpan(smallArray, 3);
 
         auto first5 = smallSpan.first(5);
@@ -109,24 +118,28 @@ TEST_CASE("Pruebas básicas de span", "[span]") {
         REQUIRE(last0.empty());
     }
 
-    SECTION("Pruebas de make_span") {
-        int array[] = { 10, 20, 30, 40 };
+    SECTION("Pruebas de make_span")
+    {
+        int array[] = {10, 20, 30, 40};
 
-        SECTION("make_span con puntero y tamaño") {
+        SECTION("make_span con puntero y tamaño")
+        {
             auto sp = make_span(array, 3);
             REQUIRE(sp.size() == 3);
             REQUIRE(sp.front() == 10);
             REQUIRE(sp.back() == 30);
         }
 
-        SECTION("make_span con dos punteros (inicio, fin)") {
+        SECTION("make_span con dos punteros (inicio, fin)")
+        {
             auto sp = make_span(array, array + 4);
             REQUIRE(sp.size() == 4);
             REQUIRE(sp.front() == 10);
             REQUIRE(sp.back() == 40);
         }
 
-        SECTION("make_span con punteros iguales (span vacío)") {
+        SECTION("make_span con punteros iguales (span vacío)")
+        {
             auto sp = make_span(array + 2, array + 2);
             REQUIRE(sp.empty());
             REQUIRE(sp.size() == 0);
@@ -134,9 +147,9 @@ TEST_CASE("Pruebas básicas de span", "[span]") {
     }
 }
 
-TEST_CASE("Reversed span tests", "[span][reversed]") 
+TEST_CASE("Reversed span tests", "[span][reversed]")
 {
-    int array[] = { 1, 2, 3, 4, 5 };
+    int array[] = {1, 2, 3, 4, 5};
     span<int> s(array, 5);
 
     SECTION("Reverse walk")

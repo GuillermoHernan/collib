@@ -23,19 +23,21 @@ class BTreeTests : public MemCheckFixture
 {
 };
 
-TEST_CASE_METHOD(BTreeTests, "Pruebas básicas de BTreeMap", "[std_map]") 
+TEST_CASE_METHOD(BTreeTests, "Pruebas básicas de BTreeMap", "[std_map]")
 {
     BTreeMap<LifeCycleObject, std::string> m;
 
-    SECTION("Inserción y acceso básico") {
-        m.insert({ 1, "uno" });
+    SECTION("Inserción y acceso básico")
+    {
+        m.insert({1, "uno"});
         m[2] = "dos";
         REQUIRE(m.size() == 2);
         REQUIRE(m[1] == "uno");
         REQUIRE(m[2] == "dos");
     }
 
-    SECTION("Búsqueda de claves") {
+    SECTION("Búsqueda de claves")
+    {
         m[10] = "diez";
         auto it = m.find(10);
         REQUIRE(it);
@@ -47,14 +49,16 @@ TEST_CASE_METHOD(BTreeTests, "Pruebas básicas de BTreeMap", "[std_map]")
         CHECK_FALSE(m.contains(99));
     }
 
-    SECTION("Sobrescritura de valores") {
+    SECTION("Sobrescritura de valores")
+    {
         m[5] = "cinco";
         REQUIRE(m[5] == "cinco");
         m[5] = "cinco_modificado";
         REQUIRE(m[5] == "cinco_modificado");
     }
 
-    SECTION("Eliminación de elementos") {
+    SECTION("Eliminación de elementos")
+    {
         m[3] = "tres";
         REQUIRE(m.size() == 1);
         m.erase(3);
@@ -62,20 +66,23 @@ TEST_CASE_METHOD(BTreeTests, "Pruebas básicas de BTreeMap", "[std_map]")
         REQUIRE(m.find(3) == false);
     }
 
-    SECTION("Ordenación automática por clave") {
+    SECTION("Ordenación automática por clave")
+    {
         m[20] = "veinte";
         m[5] = "cinco";
         m[15] = "quince";
 
         std::vector<int> keys;
-        for (const auto& pair : m) {
+        for (const auto& pair : m)
+        {
             keys.push_back(pair.key.value());
         }
 
-        REQUIRE(keys == std::vector<int>{5, 15, 20});
+        REQUIRE(keys == std::vector<int> {5, 15, 20});
     }
 
-    SECTION("Acceso con at() y manejo de excepción") {
+    SECTION("Acceso con at() y manejo de excepción")
+    {
         m[1] = "uno";
         REQUIRE(m.at(1) == "uno");
         REQUIRE_THROWS_AS(m.at(99), std::out_of_range);
@@ -84,32 +91,36 @@ TEST_CASE_METHOD(BTreeTests, "Pruebas básicas de BTreeMap", "[std_map]")
     m.clear();
 }
 
-TEST_CASE_METHOD(BTreeTests, "Constructores y operadores de BTreeMap", "[std_map][copy_move]") 
+TEST_CASE_METHOD(BTreeTests, "Constructores y operadores de BTreeMap", "[std_map][copy_move]")
 {
-    SECTION("Constructor copia") {
-        BTreeMap<LifeCycleObject, std::string> original{ {1, "uno"}, {2, "dos"} };
+    SECTION("Constructor copia")
+    {
+        BTreeMap<LifeCycleObject, std::string> original {{1, "uno"}, {2, "dos"}};
         BTreeMap<LifeCycleObject, std::string> copia(original);
         REQUIRE(copia.size() == original.size());
         REQUIRE(copia == original);
     }
 
-    SECTION("Constructor movimiento") {
-        BTreeMap<LifeCycleObject, std::string> original{ {1, "uno"}, {2, "dos"} };
+    SECTION("Constructor movimiento")
+    {
+        BTreeMap<LifeCycleObject, std::string> original {{1, "uno"}, {2, "dos"}};
         BTreeMap<LifeCycleObject, std::string> movido(std::move(original));
         REQUIRE(movido.size() == 2);
         REQUIRE(movido.find(1).value() == "uno");
-        REQUIRE(original.empty());  // original queda vacío tras move
+        REQUIRE(original.empty()); // original queda vacío tras move
     }
 
-    SECTION("Operador de asignación copia") {
-        BTreeMap<LifeCycleObject, std::string> source{ {1, "uno"} };
+    SECTION("Operador de asignación copia")
+    {
+        BTreeMap<LifeCycleObject, std::string> source {{1, "uno"}};
         BTreeMap<LifeCycleObject, std::string> target;
         target = source;
         REQUIRE(target == source);
     }
 
-    SECTION("Operador de asignación movimiento") {
-        BTreeMap<LifeCycleObject, std::string> source{ {1, "uno"}, {2, "dos"} };
+    SECTION("Operador de asignación movimiento")
+    {
+        BTreeMap<LifeCycleObject, std::string> source {{1, "uno"}, {2, "dos"}};
         BTreeMap<LifeCycleObject, std::string> target;
         target = std::move(source);
         REQUIRE(target.size() == 2);
@@ -117,48 +128,49 @@ TEST_CASE_METHOD(BTreeTests, "Constructores y operadores de BTreeMap", "[std_map
     }
 }
 
-TEST_CASE_METHOD(BTreeTests, "Recorrido con range for de BTreeMap: valores, directo e inverso", "[std_map][iteration]") 
+TEST_CASE_METHOD(
+    BTreeTests,
+    "Recorrido con range for de BTreeMap: valores, directo e inverso",
+    "[std_map][iteration]"
+)
 {
-    BTreeMap<LifeCycleObject, std::string> m{
-        {1, "uno"},
-        {3, "tres"},
-        {2, "dos"},
-        {5, "cinco"},
-        {4, "cuatro"}
-    };
+    BTreeMap<LifeCycleObject, std::string>
+        m {{1, "uno"}, {3, "tres"}, {2, "dos"}, {5, "cinco"}, {4, "cuatro"}};
 
-    SECTION("Recorrido directo (valores en orden de claves crecientes)") {
+    SECTION("Recorrido directo (valores en orden de claves crecientes)")
+    {
         std::vector<std::string> valores_obtenidos;
-        for (const auto& [clave, valor] : m) {
+        for (const auto& [clave, valor] : m)
+        {
             valores_obtenidos.push_back(valor);
         }
-        REQUIRE(valores_obtenidos == std::vector<std::string>{"uno", "dos", "tres", "cuatro", "cinco"});
+        REQUIRE(valores_obtenidos == std::vector<std::string> {"uno", "dos", "tres", "cuatro", "cinco"});
     }
 
-    SECTION("Recorrido inverso (valores en orden de claves decrecientes)") {
+    SECTION("Recorrido inverso (valores en orden de claves decrecientes)")
+    {
         std::vector<std::string> valores_obtenidos;
-        for (auto it = m.rbegin(); it != m.rend(); ++it) {
+        for (auto it = m.rbegin(); it != m.rend(); ++it)
+        {
             valores_obtenidos.push_back(it.value());
         }
-        REQUIRE(valores_obtenidos == std::vector<std::string>{"cinco", "cuatro", "tres", "dos", "uno"});
+        REQUIRE(valores_obtenidos == std::vector<std::string> {"cinco", "cuatro", "tres", "dos", "uno"});
     }
 
-    SECTION("Recorrido inverso (valores en orden de claves decrecientes) - Range for") {
+    SECTION("Recorrido inverso (valores en orden de claves decrecientes) - Range for")
+    {
         std::vector<std::string> valores_obtenidos;
-        for (auto entry : m.rbegin()) {
+        for (auto entry : m.rbegin())
+        {
             valores_obtenidos.push_back(entry.value);
         }
-        REQUIRE(valores_obtenidos == std::vector<std::string>{"cinco", "cuatro", "tres", "dos", "uno"});
+        REQUIRE(valores_obtenidos == std::vector<std::string> {"cinco", "cuatro", "tres", "dos", "uno"});
     }
 }
 
-TEST_CASE_METHOD(BTreeTests, "BTreeMap clear()", "[std_map][clear]") 
+TEST_CASE_METHOD(BTreeTests, "BTreeMap clear()", "[std_map][clear]")
 {
-    BTreeMap<LifeCycleObject, std::string> m = {
-        {1, "uno"},
-        {2, "dos"},
-        {3, "tres"}
-    };
+    BTreeMap<LifeCycleObject, std::string> m = {{1, "uno"}, {2, "dos"}, {3, "tres"}};
 
     REQUIRE(!m.empty());
     REQUIRE(m.size() == 3);
@@ -179,23 +191,29 @@ TEST_CASE_METHOD(BTreeTests, "BTreeMap clear()", "[std_map][clear]")
     REQUIRE(m.size() == 0);
 }
 
-TEST_CASE_METHOD(BTreeTests, "BTreeMap insert, emplace y try_emplace", "[std_map][insert][emplace][try_emplace]")
+TEST_CASE_METHOD(
+    BTreeTests,
+    "BTreeMap insert, emplace y try_emplace",
+    "[std_map][insert][emplace][try_emplace]"
+)
 {
     BTreeMap<LifeCycleObject, std::string> m;
 
-    SECTION("insert con par clave-valor") {
+    SECTION("insert con par clave-valor")
+    {
         auto result = m.insert(1, "uno");
         REQUIRE(result.inserted == true);
         REQUIRE(result.location.key() == 1);
         REQUIRE(result.location.value() == "uno");
 
         // Intento de insertar misma clave no modifica el valor
-        auto result2 = m.insert({ 1, "modificado" });
+        auto result2 = m.insert({1, "modificado"});
         REQUIRE(result2.inserted == false);
         REQUIRE(result2.location.value() == "uno"); // valor no modificado
     }
 
-    SECTION("emplace construye elemento en sitio") {
+    SECTION("emplace construye elemento en sitio")
+    {
         auto result = m.emplace(2, "dos");
         REQUIRE(result.inserted == true);
         REQUIRE(result.location.key() == 2);
@@ -238,171 +256,174 @@ TEST_CASE_METHOD(BTreeTests, "BTreeMap insert_or_assign()", "[std_map][insert_or
 
 #if 0
 TEST_CASE_METHOD(BTreeTests, "BTreeMap insert(range) desde iteradores", "[std_map][insert_range]") {
-    BTreeMap<LifeCycleObject, std::string> m{
-        {1, "uno"},
-        {4, "cuatro"}
-    };
+	BTreeMap<LifeCycleObject, std::string> m{
+		{1, "uno"},
+		{4, "cuatro"}
+	};
 
-    std::vector<std::pair<int, std::string>> datos_a_insertar{
-        {2, "dos"},
-        {3, "tres"},
-        {4, "cuatro_modificado"}, // clave duplicada, no se insertará
-        {5, "cinco"}
-    };
+	std::vector<std::pair<int, std::string>> datos_a_insertar{
+		{2, "dos"},
+		{3, "tres"},
+		{4, "cuatro_modificado"}, // clave duplicada, no se insertará
+		{5, "cinco"}
+	};
 
-    m.insert(datos_a_insertar.begin(), datos_a_insertar.end());
+	m.insert(datos_a_insertar.begin(), datos_a_insertar.end());
 
-    CHECK(m.size() == 5);
-    CHECK(m[1] == "uno");         // existente sin cambio
-    CHECK(m[2] == "dos");         // nuevo insertado
-    CHECK(m[3] == "tres");        // nuevo insertado
-    CHECK(m[4] == "cuatro");      // existente sin cambio, no modificado
-    CHECK(m[5] == "cinco");       // nuevo insertado
+	CHECK(m.size() == 5);
+	CHECK(m[1] == "uno");         // existente sin cambio
+	CHECK(m[2] == "dos");         // nuevo insertado
+	CHECK(m[3] == "tres");        // nuevo insertado
+	CHECK(m[4] == "cuatro");      // existente sin cambio, no modificado
+	CHECK(m[5] == "cinco");       // nuevo insertado
 }
 
 TEST_CASE_METHOD(BTreeTests, "BTreeMap erase()", "[std_map][erase]") {
-    BTreeMap<LifeCycleObject, std::string> m{
-        {1, "uno"},
-        {2, "dos"},
-        {3, "tres"},
-        {4, "cuatro"},
-        {5, "cinco"}
-    };
+	BTreeMap<LifeCycleObject, std::string> m{
+		{1, "uno"},
+		{2, "dos"},
+		{3, "tres"},
+		{4, "cuatro"},
+		{5, "cinco"}
+	};
 
-    SECTION("Erase por clave existente") {
-        size_t cantidad = m.erase(3);
-        CHECK(cantidad == 1);
-        CHECK(m.size() == 4);
-        CHECK(m.find(3) == m.end());
-    }
+	SECTION("Erase por clave existente") {
+		size_t cantidad = m.erase(3);
+		CHECK(cantidad == 1);
+		CHECK(m.size() == 4);
+		CHECK(m.find(3) == m.end());
+	}
 
-    SECTION("Erase por clave no existente") {
-        size_t cantidad = m.erase(99);
-        CHECK(cantidad == 0);
-        CHECK(m.size() == 5);
-    }
+	SECTION("Erase por clave no existente") {
+		size_t cantidad = m.erase(99);
+		CHECK(cantidad == 0);
+		CHECK(m.size() == 5);
+	}
 
-    SECTION("Erase por iterador") {
-        auto it = m.find(2);
-        CHECK(it != m.end());
-        auto siguiente = m.erase(it);
-        CHECK(siguiente->first == 3);
-        CHECK(m.size() == 4);
-        CHECK(m.find(2) == m.end());
-    }
+	SECTION("Erase por iterador") {
+		auto it = m.find(2);
+		CHECK(it != m.end());
+		auto siguiente = m.erase(it);
+		CHECK(siguiente->first == 3);
+		CHECK(m.size() == 4);
+		CHECK(m.find(2) == m.end());
+	}
 
-    SECTION("Erase por rango de iteradores") {
-        auto it_inicio = m.find(2);
-        auto it_fin = m.find(5);
-        auto it_retorno = m.erase(it_inicio, it_fin); // elimina claves 2,3,4
-        CHECK(it_retorno->first == 5);
-        CHECK(m.size() == 2);
-        CHECK(m.find(2) == m.end());
-        CHECK(m.find(3) == m.end());
-        CHECK(m.find(4) == m.end());
-    }
+	SECTION("Erase por rango de iteradores") {
+		auto it_inicio = m.find(2);
+		auto it_fin = m.find(5);
+		auto it_retorno = m.erase(it_inicio, it_fin); // elimina claves 2,3,4
+		CHECK(it_retorno->first == 5);
+		CHECK(m.size() == 2);
+		CHECK(m.find(2) == m.end());
+		CHECK(m.find(3) == m.end());
+		CHECK(m.find(4) == m.end());
+	}
 }
 
 TEST_CASE_METHOD(BTreeTests, "BTreeMap merge()", "[std_map][merge]") {
-    BTreeMap<LifeCycleObject, std::string> destino{
-        {1, "uno"},
-        {2, "dos"}
-    };
-    BTreeMap<LifeCycleObject, std::string> fuente{
-        {2, "dos_fuente"},   // clave duplicada, no será movida
-        {3, "tres"},
-        {4, "cuatro"}
-    };
+	BTreeMap<LifeCycleObject, std::string> destino{
+		{1, "uno"},
+		{2, "dos"}
+	};
+	BTreeMap<LifeCycleObject, std::string> fuente{
+		{2, "dos_fuente"},   // clave duplicada, no será movida
+		{3, "tres"},
+		{4, "cuatro"}
+	};
 
-    destino.merge(fuente);
+	destino.merge(fuente);
 
-    CHECK(destino.size() == 4);
-    CHECK(destino[1] == "uno");
-    CHECK(destino[2] == "dos");
-    CHECK(destino[3] == "tres");
-    CHECK(destino[4] == "cuatro");
+	CHECK(destino.size() == 4);
+	CHECK(destino[1] == "uno");
+	CHECK(destino[2] == "dos");
+	CHECK(destino[3] == "tres");
+	CHECK(destino[4] == "cuatro");
 
-    CHECK(fuente.size() == 1);
-    CHECK(fuente.find(2) != fuente.end()); // clave duplicada queda en fuente
-    CHECK(fuente[2] == "dos_fuente");
+	CHECK(fuente.size() == 1);
+	CHECK(fuente.find(2) != fuente.end()); // clave duplicada queda en fuente
+	CHECK(fuente[2] == "dos_fuente");
 }
 #endif
 TEST_CASE_METHOD(BTreeTests, "BTreeMap find() y contains()", "[std_map][find][contains]")
 {
-    BTreeMap<LifeCycleObject, std::string> m{
-        {1, "uno"},
-        {2, "dos"},
-        {3, "tres"}
-    };
+    BTreeMap<LifeCycleObject, std::string> m {{1, "uno"}, {2, "dos"}, {3, "tres"}};
 
-    SECTION("find clave existente") {
+    SECTION("find clave existente")
+    {
         auto it = m.find(2);
         CHECK(it);
         CHECK(it.key() == 2);
         CHECK(it.value() == "dos");
     }
 
-    SECTION("find clave no existente") {
+    SECTION("find clave no existente")
+    {
         auto it = m.find(99);
         CHECK(it == false);
     }
 
-    SECTION("contains clave existente") {
-        CHECK(m.contains(1));
-    }
+    SECTION("contains clave existente") { CHECK(m.contains(1)); }
 
-    SECTION("contains clave no existente") {
-        CHECK_FALSE(m.contains(42));
-    }
+    SECTION("contains clave no existente") { CHECK_FALSE(m.contains(42)); }
 }
 
 class SimpleKey
 {
 public:
-    SimpleKey(const char* text) : m_text(text) {}
-    SimpleKey(std::string_view text) : m_text(text) {}
+    SimpleKey(const char* text)
+        : m_text(text)
+    {
+    }
+    SimpleKey(std::string_view text)
+        : m_text(text)
+    {
+    }
     SimpleKey(const SimpleKey&) = default;
     SimpleKey(SimpleKey&&) = default;
 
     SimpleKey& operator=(const SimpleKey&) = default;
     SimpleKey& operator=(SimpleKey&&) = default;
 
-    bool operator < (const SimpleKey& rhs) const { return m_text < rhs.m_text; }
-    bool operator == (const SimpleKey& rhs) const { return m_text == rhs.m_text; }
+    bool operator<(const SimpleKey& rhs) const { return m_text < rhs.m_text; }
+    bool operator==(const SimpleKey& rhs) const { return m_text == rhs.m_text; }
+
 private:
     std::string m_text;
 };
 
-TEST_CASE_METHOD(BTreeTests, "Prueba el árbol con una clave que sólo cumple requisitos mínimos", "[std_map][simple_key]") 
+TEST_CASE_METHOD(
+    BTreeTests,
+    "Prueba el árbol con una clave que sólo cumple requisitos mínimos",
+    "[std_map][simple_key]"
+)
 {
-    BTreeMap<SimpleKey, int> m{
-        {"uno", 1},
-        {"dos", 2},
-        {"tres", 3}
-    };
+    BTreeMap<SimpleKey, int> m {{"uno", 1}, {"dos", 2}, {"tres", 3}};
 
-    SECTION("find clave existente") {
+    SECTION("find clave existente")
+    {
         auto it = m.find("dos");
         CHECK(it);
         CHECK(it.key() == "dos");
         CHECK(it.value() == 2);
     }
 
-    SECTION("find clave no existente") {
+    SECTION("find clave no existente")
+    {
         auto it = m.find("no_existe");
         CHECK(it == false);
     }
 
-    SECTION("contains clave existente") {
-        CHECK(m.contains("uno"));
-    }
+    SECTION("contains clave existente") { CHECK(m.contains("uno")); }
 
-    SECTION("contains clave no existente") {
-        CHECK_FALSE(m.contains("cuarenta y dos"));
-    }
+    SECTION("contains clave no existente") { CHECK_FALSE(m.contains("cuarenta y dos")); }
 }
 
-TEST_CASE_METHOD(BTreeTests, "BTreeMap inserciones masivas: provoca división de nodos hojas e internos", "[btree][split_nodes]") 
+TEST_CASE_METHOD(
+    BTreeTests,
+    "BTreeMap inserciones masivas: provoca división de nodos hojas e internos",
+    "[btree][split_nodes]"
+)
 {
     BTreeMap<LifeCycleObject, std::string> m;
 
@@ -415,7 +436,8 @@ TEST_CASE_METHOD(BTreeTests, "BTreeMap inserciones masivas: provoca división de
 
     // Verificar que todas las claves están presentes y en orden
     LifeCycleObject prev_key = 0;
-    for (const auto& [k, v] : m) {
+    for (const auto& [k, v] : m)
+    {
         CHECK(k == std::stoi(v));
         CHECK(k > prev_key);
         prev_key = k;
@@ -426,7 +448,7 @@ TEST_CASE_METHOD(BTreeTests, "BTreeMap inserciones masivas: provoca división de
     CHECK(m.rbegin().key() == total_insertions);
 }
 
-TEST_CASE_METHOD(BTreeTests, "BTreeMap: random inserts", "[btree][split_nodes][random]") 
+TEST_CASE_METHOD(BTreeTests, "BTreeMap: random inserts", "[btree][split_nodes][random]")
 {
     BTreeMap<LifeCycleObject, std::string, 4> m;
     const int count = 1024;
@@ -450,10 +472,10 @@ TEST_CASE_METHOD(BTreeTests, "BTreeMap: Interleaved inserts to expose bug", "[bt
     BTreeMap<LifeCycleObject, int, 4> m;
 
     auto insertSeq = [&m](int start, int count)
-        {
-            for (int i = start; i < start + count; ++i)
-                m[i] = i * 5 + 23;
-        };
+    {
+        for (int i = start; i < start + count; ++i)
+            m[i] = i * 5 + 23;
+    };
 
     insertSeq(0, 8);
     insertSeq(32, 8);
@@ -463,7 +485,7 @@ TEST_CASE_METHOD(BTreeTests, "BTreeMap: Interleaved inserts to expose bug", "[bt
     CHECK(checkMap(m));
 }
 
-TEST_CASE_METHOD(BTreeTests, "BTreeMap borrados masivos con reequilibrado", "[btree][erase][rebalance]") 
+TEST_CASE_METHOD(BTreeTests, "BTreeMap borrados masivos con reequilibrado", "[btree][erase][rebalance]")
 {
     BTreeMap<LifeCycleObject, std::string, 4> m;
     const int total_insertions = 40;
@@ -501,7 +523,8 @@ TEST_CASE_METHOD(BTreeTests, "BTreeMap borrados masivos con reequilibrado", "[bt
     CHECK(checkMap(m));
 
     int previo = -1;
-    for (const auto& [k, v] : m) {
+    for (const auto& [k, v] : m)
+    {
         CHECK(k.value() % 2 == 1);
         CHECK(k > previo);
         previo = k.value();
@@ -514,7 +537,11 @@ TEST_CASE_METHOD(BTreeTests, "BTreeMap borrados masivos con reequilibrado", "[bt
     CHECK(m.contains(5));
 }
 
-TEST_CASE_METHOD(BTreeTests, "BTreeMap borrados masivos con reequilibrado: Segmentos grandes del árbol", "[btree][erase][rebalance]")
+TEST_CASE_METHOD(
+    BTreeTests,
+    "BTreeMap borrados masivos con reequilibrado: Segmentos grandes del árbol",
+    "[btree][erase][rebalance]"
+)
 {
     BTreeMap<LifeCycleObject, LifeCycleObject> m;
     const int total = 4096;
@@ -535,8 +562,8 @@ TEST_CASE_METHOD(BTreeTests, "BTreeMap borrados masivos con reequilibrado: Segme
         {
             m.erase(i);
             ++deleteCount;
-            //INFO("Delete count is: " << deleteCount);
-            //REQUIRE(checkMap(m));
+            // INFO("Delete count is: " << deleteCount);
+            // REQUIRE(checkMap(m));
         }
     }
     REQUIRE(m.size() == total - deleteCount);
@@ -553,7 +580,12 @@ TEST_CASE_METHOD(BTreeTests, "BTreeMap borrados masivos con reequilibrado: Segme
     CHECK(checkMap(m));
 }
 
-TEST_CASE_METHOD(BTreeTests, "BTreeMap prueba estrés: inserciones, borrados y reinserciones", "[btree][stress]") {
+TEST_CASE_METHOD(
+    BTreeTests,
+    "BTreeMap prueba estrés: inserciones, borrados y reinserciones",
+    "[btree][stress]"
+)
+{
     BTreeMap<LifeCycleObject, LifeCycleObject> m;
     const int total = 2000;
 
@@ -581,7 +613,8 @@ TEST_CASE_METHOD(BTreeTests, "BTreeMap prueba estrés: inserciones, borrados y r
     CHECK(checkMap(m));
 
     // Validar integridad total: todas las claves esperadas deben existir
-    for (int i = 0; i < total; ++i) {
+    for (int i = 0; i < total; ++i)
+    {
         auto it = m.find(i);
         if (i % 3 != 0 || i % 6 == 0)
             CHECK(it);

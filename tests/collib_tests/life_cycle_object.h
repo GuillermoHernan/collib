@@ -3,7 +3,7 @@
 #include <cassert>
 #include <compare>
 
-// Test utility object whose main purpose is to chack that constructors / destructors / copiers / movers 
+// Test utility object whose main purpose is to chack that constructors / destructors / copiers / movers
 // are called right within containers.
 class LifeCycleObject
 {
@@ -76,10 +76,7 @@ public:
         return *this;
     }
 
-    ~LifeCycleObject() noexcept
-    {
-        ++destructed;
-    }
+    ~LifeCycleObject() noexcept { ++destructed; }
 
     auto operator<=>(const LifeCycleObject& other) const = default;
 
@@ -93,26 +90,22 @@ public:
         destructed = 0;
     }
 
-
     static bool all_destroyed() noexcept
     {
         return destructed == (default_constructed + copy_constructed + move_constructed);
     }
 
-    int value() const noexcept
-    {
-        return m_value;
-    }
+    int value() const noexcept { return m_value; }
 };
 
 namespace std
 {
-    template <>
-    struct hash<LifeCycleObject>
+template <>
+struct hash<LifeCycleObject>
+{
+    std::size_t operator()(const LifeCycleObject& obj) const noexcept
     {
-        std::size_t operator()(const LifeCycleObject& obj) const noexcept
-        {
-            return std::hash<int>()(obj.value());
-        }
-    };
+        return std::hash<int>()(obj.value());
+    }
+};
 }

@@ -11,5 +11,4 @@ public:
 private:
     coll::DebugAllocator m_dalloc;
     coll::AllocatorHolder m_holder;
-
 };
