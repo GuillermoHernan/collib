@@ -9,7 +9,7 @@ namespace coll
 {
 
 template <typename Key, typename Value, size_t Order = 4>
-class BTreeMap
+class bmap
 {
     template <typename Key, typename Value, size_t Order>
     friend class BTreeChecker;
@@ -42,19 +42,19 @@ public:
     using key_type = Key;
     using mapped_type = Value;
 
-    BTreeMap(IAllocator& alloc = defaultAllocator())
+    bmap(IAllocator& alloc = defaultAllocator())
         : m_core(alloc)
     {
     }
 
-    BTreeMap(std::initializer_list<Entry> init_list, IAllocator& alloc = defaultAllocator());
-    ~BTreeMap();
+    bmap(std::initializer_list<Entry> init_list, IAllocator& alloc = defaultAllocator());
+    ~bmap();
 
-    BTreeMap(const BTreeMap& rhs);
-    BTreeMap(BTreeMap&& rhs) noexcept = default;
+    bmap(const bmap& rhs);
+    bmap(bmap&& rhs) noexcept = default;
 
-    BTreeMap& operator=(const BTreeMap& rhs);
-    BTreeMap& operator=(BTreeMap&& rhs) noexcept = default;
+    bmap& operator=(const bmap& rhs);
+    bmap& operator=(bmap&& rhs) noexcept = default;
 
     InsertResult insert(const Key& key, const Value& value);
     InsertResult insert(const Entry& entry) { return insert(entry.key, entry.value); }
@@ -108,7 +108,7 @@ public:
         operator bool() const { return has_value(); }
 
     private:
-        friend class BTreeMap;
+        friend class bmap;
 
         Handle(const BTreeCoreType::Handle& handle)
             : m_handle {handle}
@@ -152,7 +152,7 @@ public:
         Range operator++(int) { return Range(m_range++); }
 
     private:
-        friend class BTreeMap;
+        friend class bmap;
 
         Range(const BTreeCoreType::Range& range)
             : m_range(range)
@@ -190,7 +190,7 @@ public:
         InvRange operator++(int) { return InvRange(m_range++); }
 
     private:
-        friend class BTreeMap;
+        friend class bmap;
 
         InvRange(const BTreeCoreType::InvRange& range)
             : m_range {range}
@@ -208,8 +208,8 @@ private:
 // Constructores
 // ------------------------------------------------------------
 template <typename Key, typename Value, size_t Order>
-BTreeMap<Key, Value, Order>::BTreeMap(std::initializer_list<Entry> init_list, IAllocator& alloc)
-    : BTreeMap(alloc)
+bmap<Key, Value, Order>::bmap(std::initializer_list<Entry> init_list, IAllocator& alloc)
+    : bmap(alloc)
 {
     for (const auto& entry : init_list)
         insert(entry);
@@ -217,17 +217,17 @@ BTreeMap<Key, Value, Order>::BTreeMap(std::initializer_list<Entry> init_list, IA
 
 // Definición del constructor de copia
 template <typename Key, typename Value, size_t Order>
-BTreeMap<Key, Value, Order>::BTreeMap(const BTreeMap& rhs)
-    : BTreeMap(rhs.m_core.allocator())
+bmap<Key, Value, Order>::bmap(const bmap& rhs)
+    : bmap(rhs.m_core.allocator())
 {
-    // Insertamos todos los pares del otro BTreeMap
+    // Insertamos todos los pares del otro bmap
     for (const auto& entry : rhs)
         insert(entry);
 }
 
 // Definición del operador de copia
 template <typename Key, typename Value, size_t Order>
-BTreeMap<Key, Value, Order>& BTreeMap<Key, Value, Order>::operator=(const BTreeMap& rhs)
+bmap<Key, Value, Order>& bmap<Key, Value, Order>::operator=(const bmap& rhs)
 {
     if (this == &rhs)
         return *this;
@@ -244,13 +244,13 @@ BTreeMap<Key, Value, Order>& BTreeMap<Key, Value, Order>::operator=(const BTreeM
 // ------------------------------------------------------------
 
 template <typename Key, typename Value, size_t Order>
-BTreeMap<Key, Value, Order>::~BTreeMap()
+bmap<Key, Value, Order>::~bmap()
 {
     clear();
 }
 
 template <typename Key, typename Value, size_t Order>
-void BTreeMap<Key, Value, Order>::clear()
+void bmap<Key, Value, Order>::clear()
 {
     m_core.clear();
 }
@@ -259,8 +259,8 @@ void BTreeMap<Key, Value, Order>::clear()
 // Inserción pública
 // ------------------------------------------------------------
 template <typename Key, typename Value, size_t Order>
-typename BTreeMap<Key, Value, Order>::InsertResult
-BTreeMap<Key, Value, Order>::insert(const Key& key, const Value& value)
+typename bmap<Key, Value, Order>::InsertResult
+bmap<Key, Value, Order>::insert(const Key& key, const Value& value)
 {
     auto [location, valueBuffer, newEntry] = m_core.insert(key);
 
@@ -274,8 +274,8 @@ BTreeMap<Key, Value, Order>::insert(const Key& key, const Value& value)
 
 template <typename Key, typename Value, size_t Order>
 template <typename... Args>
-typename BTreeMap<Key, Value, Order>::InsertResult
-BTreeMap<Key, Value, Order>::emplace(const Key& key, Args&&... args)
+typename bmap<Key, Value, Order>::InsertResult
+bmap<Key, Value, Order>::emplace(const Key& key, Args&&... args)
 {
     auto [location, valueBuffer, newEntry] = m_core.insert(key);
 
@@ -289,8 +289,8 @@ BTreeMap<Key, Value, Order>::emplace(const Key& key, Args&&... args)
 
 template <typename Key, typename Value, size_t Order>
 template <typename M>
-typename BTreeMap<Key, Value, Order>::InsertResult
-BTreeMap<Key, Value, Order>::insert_or_assign(const Key& key, M&& obj)
+typename bmap<Key, Value, Order>::InsertResult
+bmap<Key, Value, Order>::insert_or_assign(const Key& key, M&& obj)
 {
     auto [location, valueBuffer, newEntry] = m_core.insert(key);
 
@@ -311,7 +311,7 @@ BTreeMap<Key, Value, Order>::insert_or_assign(const Key& key, M&& obj)
 // Búsqueda
 // ------------------------------------------------------------
 template <typename Key, typename Value, size_t Order>
-typename BTreeMap<Key, Value, Order>::Handle BTreeMap<Key, Value, Order>::find(const Key& key) const
+typename bmap<Key, Value, Order>::Handle bmap<Key, Value, Order>::find(const Key& key) const
 {
     return Handle {m_core.find_first(key)};
 }
@@ -322,7 +322,7 @@ typename BTreeMap<Key, Value, Order>::Handle BTreeMap<Key, Value, Order>::find(c
 
 // Definición operator[]
 template <typename Key, typename Value, size_t Order>
-Value& BTreeMap<Key, Value, Order>::operator[](const Key& key)
+Value& bmap<Key, Value, Order>::operator[](const Key& key)
 {
     auto [location, valueBuffer, newEntry] = m_core.insert(key);
 
@@ -334,12 +334,12 @@ Value& BTreeMap<Key, Value, Order>::operator[](const Key& key)
 
 // Devuelve referencia const a Value existente, o lanza si no está.
 template <typename Key, typename Value, size_t Order>
-const Value& BTreeMap<Key, Value, Order>::at(const Key& key) const
+const Value& bmap<Key, Value, Order>::at(const Key& key) const
 {
     auto h = find(key);
 
     if (!h)
-        throw std::out_of_range("BTreeMap: key not found");
+        throw std::out_of_range("bmap: key not found");
     else
         return h.value();
 }
@@ -349,7 +349,7 @@ const Value& BTreeMap<Key, Value, Order>::at(const Key& key) const
 // ------------------------------------------------------------
 template <typename Key, typename Value, size_t Order>
 std::strong_ordering
-operator<=>(const BTreeMap<Key, Value, Order>& lhs, const BTreeMap<Key, Value, Order>& rhs)
+operator<=>(const bmap<Key, Value, Order>& lhs, const bmap<Key, Value, Order>& rhs)
 {
     auto rhs_range = rhs.begin();
 
@@ -373,7 +373,7 @@ operator<=>(const BTreeMap<Key, Value, Order>& lhs, const BTreeMap<Key, Value, O
 }
 
 template <typename Key, typename Value, size_t Order>
-bool operator==(const BTreeMap<Key, Value, Order>& lhs, const BTreeMap<Key, Value, Order>& rhs)
+bool operator==(const bmap<Key, Value, Order>& lhs, const bmap<Key, Value, Order>& rhs)
 {
     return (lhs <=> rhs) == 0;
 }

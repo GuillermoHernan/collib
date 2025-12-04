@@ -4,7 +4,7 @@
 #include <random>
 #include <unordered_map>
 
-#include "btree.h"
+#include "bmap.h"
 
 using namespace coll;
 
@@ -24,9 +24,9 @@ inline bool map_find(const Map& m, const Key& key)
     return m.find(key) != m.end();
 }
 
-// Especialización para BTreeMap: find devuelve Handle, convertimos a bool con has_value()
+// Especialización para bmap: find devuelve Handle, convertimos a bool con has_value()
 template <typename Key, typename Value, size_t Order>
-inline bool map_find(const BTreeMap<Key, Value, Order>& m, const Key& key)
+inline bool map_find(const bmap<Key, Value, Order>& m, const Key& key)
 {
     return m.find(key).has_value();
 }
@@ -38,9 +38,9 @@ inline void map_insert(Map& m, const Key& key, const Value& value)
     m.insert({key, value});
 }
 
-// Especialización para BTreeMap (insert overload es distinta)
+// Especialización para bmap (insert overload es distinta)
 template <typename Key, typename Value, size_t Order>
-inline void map_insert(BTreeMap<Key, Value, Order>& m, const Key& key, const Value& value)
+inline void map_insert(bmap<Key, Value, Order>& m, const Key& key, const Value& value)
 {
     m.insert(key, value);
 }
@@ -52,9 +52,9 @@ inline bool map_erase(Map& m, const Key& key)
     return m.erase(key) > 0;
 }
 
-// Especialización para BTreeMap (erase devuelve bool directamente)
+// Especialización para bmap (erase devuelve bool directamente)
 template <typename Key, typename Value, size_t Order>
-inline bool map_erase(BTreeMap<Key, Value, Order>& m, const Key& key)
+inline bool map_erase(bmap<Key, Value, Order>& m, const Key& key)
 {
     return m.erase(key);
 }
@@ -66,7 +66,7 @@ inline auto get_value(const Pair& p) -> decltype(p.second)
     return p.second;
 }
 
-// Adaptador para BTreeMap::Range o Entry (estructura que tiene métodos key() y value())
+// Adaptador para bmap::Range o Entry (estructura que tiene métodos key() y value())
 template <typename Entry>
 inline auto get_value(const Entry& e) -> decltype(e.value)
 {
@@ -231,20 +231,20 @@ int main()
     std::vector<std::string> map_names {
         "std::map",
         "std::unordered_map",
-        "BTreeMap order 4",
-        "BTreeMap order 16",
-        "BTreeMap order 32",
-        "BTreeMap order 64",
-        "BTreeMap order 256"
+        "bmap order 4",
+        "bmap order 16",
+        "bmap order 32",
+        "bmap order 64",
+        "bmap order 256"
     };
 
     using StdMap = std::map<int, int>;
     using StdUnordered = std::unordered_map<int, int>;
-    using BTree4 = BTreeMap<int, int, 4>;
-    using BTree16 = BTreeMap<int, int, 16>;
-    using BTree32 = BTreeMap<int, int, 32>;
-    using BTree64 = BTreeMap<int, int, 64>;
-    using BTree256 = BTreeMap<int, int, 256>;
+    using BTree4 = bmap<int, int, 4>;
+    using BTree16 = bmap<int, int, 16>;
+    using BTree32 = bmap<int, int, 32>;
+    using BTree64 = bmap<int, int, 64>;
+    using BTree256 = bmap<int, int, 256>;
 
     std::vector<BenchmarkResult> all_results;
 

@@ -23,7 +23,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\allocator2.h" />
-    <ClInclude Include="include\btree.h" />
+    <ClInclude Include="include\bmap.h" />
     <ClInclude Include="include\btree_checker.h" />
     <ClInclude Include="include\collib_concepts.h" />
     <ClInclude Include="include\darray.h" />

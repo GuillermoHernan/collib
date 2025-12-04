@@ -1,6 +1,6 @@
 #pragma once
 
-#include "btree.h"
+#include "bmap.h"
 
 #include <iostream>
 #include <string>
@@ -280,7 +280,7 @@ template <typename Key, typename Value, size_t Order>
 class BTreeChecker
 {
 public:
-    using MapType = BTreeMap<Key, Value, Order>;
+    using MapType = bmap<Key, Value, Order>;
     using CoreCheckerType = BTreeCoreChecker<Key, MapType::configure()>;
 
     BTreeChecker(const MapType& map)
@@ -297,7 +297,7 @@ private:
 };
 
 template <typename Key, typename Value, size_t Order>
-BTreeChecker<Key, Value, Order> makeBtreeChecker(const BTreeMap<Key, Value, Order>& map)
+BTreeChecker<Key, Value, Order> makeBtreeChecker(const bmap<Key, Value, Order>& map)
 {
     return BTreeChecker<Key, Value, Order>(map);
 }

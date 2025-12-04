@@ -1,5 +1,5 @@
 #include "allocator2.h"
-#include "btree.h"
+#include "bmap.h"
 #include "darray.h"
 
 #include <iostream>
@@ -30,7 +30,7 @@ IAllocator& defaultAllocator()
 
 struct DebugAllocator::SInternal
 {
-    BTreeMap<void*, size_t, 32> allocations;
+    bmap<void*, size_t, 32> allocations;
 };
 
 DebugAllocator::DebugAllocator(IAllocator& alloc)

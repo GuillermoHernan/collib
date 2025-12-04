@@ -1,6 +1,6 @@
 #include "pch-collib-tests.h"
 
-#include "btree.h"
+#include "bmap.h"
 #include "btree_checker.h"
 #include "life_cycle_object.h"
 #include "mem_check_fixture.h"
@@ -23,9 +23,9 @@ class BTreeTests : public MemCheckFixture
 {
 };
 
-TEST_CASE_METHOD(BTreeTests, "Pruebas básicas de BTreeMap", "[std_map]")
+TEST_CASE_METHOD(BTreeTests, "Pruebas básicas de bmap", "[std_map]")
 {
-    BTreeMap<LifeCycleObject, std::string> m;
+    bmap<LifeCycleObject, std::string> m;
 
     SECTION("Inserción y acceso básico")
     {
@@ -91,20 +91,20 @@ TEST_CASE_METHOD(BTreeTests, "Pruebas básicas de BTreeMap", "[std_map]")
     m.clear();
 }
 
-TEST_CASE_METHOD(BTreeTests, "Constructores y operadores de BTreeMap", "[std_map][copy_move]")
+TEST_CASE_METHOD(BTreeTests, "Constructores y operadores de bmap", "[std_map][copy_move]")
 {
     SECTION("Constructor copia")
     {
-        BTreeMap<LifeCycleObject, std::string> original {{1, "uno"}, {2, "dos"}};
-        BTreeMap<LifeCycleObject, std::string> copia(original);
+        bmap<LifeCycleObject, std::string> original {{1, "uno"}, {2, "dos"}};
+        bmap<LifeCycleObject, std::string> copia(original);
         REQUIRE(copia.size() == original.size());
         REQUIRE(copia == original);
     }
 
     SECTION("Constructor movimiento")
     {
-        BTreeMap<LifeCycleObject, std::string> original {{1, "uno"}, {2, "dos"}};
-        BTreeMap<LifeCycleObject, std::string> movido(std::move(original));
+        bmap<LifeCycleObject, std::string> original {{1, "uno"}, {2, "dos"}};
+        bmap<LifeCycleObject, std::string> movido(std::move(original));
         REQUIRE(movido.size() == 2);
         REQUIRE(movido.find(1).value() == "uno");
         REQUIRE(original.empty()); // original queda vacío tras move
@@ -112,16 +112,16 @@ TEST_CASE_METHOD(BTreeTests, "Constructores y operadores de BTreeMap", "[std_map
 
     SECTION("Operador de asignación copia")
     {
-        BTreeMap<LifeCycleObject, std::string> source {{1, "uno"}};
-        BTreeMap<LifeCycleObject, std::string> target;
+        bmap<LifeCycleObject, std::string> source {{1, "uno"}};
+        bmap<LifeCycleObject, std::string> target;
         target = source;
         REQUIRE(target == source);
     }
 
     SECTION("Operador de asignación movimiento")
     {
-        BTreeMap<LifeCycleObject, std::string> source {{1, "uno"}, {2, "dos"}};
-        BTreeMap<LifeCycleObject, std::string> target;
+        bmap<LifeCycleObject, std::string> source {{1, "uno"}, {2, "dos"}};
+        bmap<LifeCycleObject, std::string> target;
         target = std::move(source);
         REQUIRE(target.size() == 2);
         REQUIRE(source.empty()); // source queda vacío tras move
@@ -130,11 +130,11 @@ TEST_CASE_METHOD(BTreeTests, "Constructores y operadores de BTreeMap", "[std_map
 
 TEST_CASE_METHOD(
     BTreeTests,
-    "Recorrido con range for de BTreeMap: valores, directo e inverso",
+    "Recorrido con range for de bmap: valores, directo e inverso",
     "[std_map][iteration]"
 )
 {
-    BTreeMap<LifeCycleObject, std::string>
+    bmap<LifeCycleObject, std::string>
         m {{1, "uno"}, {3, "tres"}, {2, "dos"}, {5, "cinco"}, {4, "cuatro"}};
 
     SECTION("Recorrido directo (valores en orden de claves crecientes)")
@@ -168,9 +168,9 @@ TEST_CASE_METHOD(
     }
 }
 
-TEST_CASE_METHOD(BTreeTests, "BTreeMap clear()", "[std_map][clear]")
+TEST_CASE_METHOD(BTreeTests, "bmap clear()", "[std_map][clear]")
 {
-    BTreeMap<LifeCycleObject, std::string> m = {{1, "uno"}, {2, "dos"}, {3, "tres"}};
+    bmap<LifeCycleObject, std::string> m = {{1, "uno"}, {2, "dos"}, {3, "tres"}};
 
     REQUIRE(!m.empty());
     REQUIRE(m.size() == 3);
@@ -193,11 +193,11 @@ TEST_CASE_METHOD(BTreeTests, "BTreeMap clear()", "[std_map][clear]")
 
 TEST_CASE_METHOD(
     BTreeTests,
-    "BTreeMap insert, emplace y try_emplace",
+    "bmap insert, emplace y try_emplace",
     "[std_map][insert][emplace][try_emplace]"
 )
 {
-    BTreeMap<LifeCycleObject, std::string> m;
+    bmap<LifeCycleObject, std::string> m;
 
     SECTION("insert con par clave-valor")
     {
@@ -228,9 +228,9 @@ TEST_CASE_METHOD(
     }
 }
 
-TEST_CASE_METHOD(BTreeTests, "BTreeMap insert_or_assign()", "[std_map][insert_or_assign]")
+TEST_CASE_METHOD(BTreeTests, "bmap insert_or_assign()", "[std_map][insert_or_assign]")
 {
-    BTreeMap<LifeCycleObject, std::string> m;
+    bmap<LifeCycleObject, std::string> m;
 
     // Inserción de un nuevo elemento
     auto resultado1 = m.insert_or_assign(1, "uno");
@@ -255,8 +255,8 @@ TEST_CASE_METHOD(BTreeTests, "BTreeMap insert_or_assign()", "[std_map][insert_or
 }
 
 #if 0
-TEST_CASE_METHOD(BTreeTests, "BTreeMap insert(range) desde iteradores", "[std_map][insert_range]") {
-	BTreeMap<LifeCycleObject, std::string> m{
+TEST_CASE_METHOD(BTreeTests, "bmap insert(range) desde iteradores", "[std_map][insert_range]") {
+	bmap<LifeCycleObject, std::string> m{
 		{1, "uno"},
 		{4, "cuatro"}
 	};
@@ -278,8 +278,8 @@ TEST_CASE_METHOD(BTreeTests, "BTreeMap insert(range) desde iteradores", "[std_ma
 	CHECK(m[5] == "cinco");       // nuevo insertado
 }
 
-TEST_CASE_METHOD(BTreeTests, "BTreeMap erase()", "[std_map][erase]") {
-	BTreeMap<LifeCycleObject, std::string> m{
+TEST_CASE_METHOD(BTreeTests, "bmap erase()", "[std_map][erase]") {
+	bmap<LifeCycleObject, std::string> m{
 		{1, "uno"},
 		{2, "dos"},
 		{3, "tres"},
@@ -321,12 +321,12 @@ TEST_CASE_METHOD(BTreeTests, "BTreeMap erase()", "[std_map][erase]") {
 	}
 }
 
-TEST_CASE_METHOD(BTreeTests, "BTreeMap merge()", "[std_map][merge]") {
-	BTreeMap<LifeCycleObject, std::string> destino{
+TEST_CASE_METHOD(BTreeTests, "bmap merge()", "[std_map][merge]") {
+	bmap<LifeCycleObject, std::string> destino{
 		{1, "uno"},
 		{2, "dos"}
 	};
-	BTreeMap<LifeCycleObject, std::string> fuente{
+	bmap<LifeCycleObject, std::string> fuente{
 		{2, "dos_fuente"},   // clave duplicada, no será movida
 		{3, "tres"},
 		{4, "cuatro"}
@@ -345,9 +345,9 @@ TEST_CASE_METHOD(BTreeTests, "BTreeMap merge()", "[std_map][merge]") {
 	CHECK(fuente[2] == "dos_fuente");
 }
 #endif
-TEST_CASE_METHOD(BTreeTests, "BTreeMap find() y contains()", "[std_map][find][contains]")
+TEST_CASE_METHOD(BTreeTests, "bmap find() y contains()", "[std_map][find][contains]")
 {
-    BTreeMap<LifeCycleObject, std::string> m {{1, "uno"}, {2, "dos"}, {3, "tres"}};
+    bmap<LifeCycleObject, std::string> m {{1, "uno"}, {2, "dos"}, {3, "tres"}};
 
     SECTION("find clave existente")
     {
@@ -398,7 +398,7 @@ TEST_CASE_METHOD(
     "[std_map][simple_key]"
 )
 {
-    BTreeMap<SimpleKey, int> m {{"uno", 1}, {"dos", 2}, {"tres", 3}};
+    bmap<SimpleKey, int> m {{"uno", 1}, {"dos", 2}, {"tres", 3}};
 
     SECTION("find clave existente")
     {
@@ -421,11 +421,11 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     BTreeTests,
-    "BTreeMap inserciones masivas: provoca división de nodos hojas e internos",
+    "bmap inserciones masivas: provoca división de nodos hojas e internos",
     "[btree][split_nodes]"
 )
 {
-    BTreeMap<LifeCycleObject, std::string> m;
+    bmap<LifeCycleObject, std::string> m;
 
     const int total_insertions = 50;
 
@@ -448,9 +448,9 @@ TEST_CASE_METHOD(
     CHECK(m.rbegin().key() == total_insertions);
 }
 
-TEST_CASE_METHOD(BTreeTests, "BTreeMap: random inserts", "[btree][split_nodes][random]")
+TEST_CASE_METHOD(BTreeTests, "bmap: random inserts", "[btree][split_nodes][random]")
 {
-    BTreeMap<LifeCycleObject, std::string, 4> m;
+    bmap<LifeCycleObject, std::string, 4> m;
     const int count = 1024;
 
     std::mt19937_64 rng(12345);
@@ -465,11 +465,11 @@ TEST_CASE_METHOD(BTreeTests, "BTreeMap: random inserts", "[btree][split_nodes][r
     CHECK(checkMap(m));
 }
 
-TEST_CASE_METHOD(BTreeTests, "BTreeMap: Interleaved inserts to expose bug", "[btree][bug][linked_list]")
+TEST_CASE_METHOD(BTreeTests, "bmap: Interleaved inserts to expose bug", "[btree][bug][linked_list]")
 {
     // This test is designed to expose a bug found inserting nodes, that leaf nodes linked list was not
     // updated properly.
-    BTreeMap<LifeCycleObject, int, 4> m;
+    bmap<LifeCycleObject, int, 4> m;
 
     auto insertSeq = [&m](int start, int count)
     {
@@ -485,9 +485,9 @@ TEST_CASE_METHOD(BTreeTests, "BTreeMap: Interleaved inserts to expose bug", "[bt
     CHECK(checkMap(m));
 }
 
-TEST_CASE_METHOD(BTreeTests, "BTreeMap borrados masivos con reequilibrado", "[btree][erase][rebalance]")
+TEST_CASE_METHOD(BTreeTests, "bmap borrados masivos con reequilibrado", "[btree][erase][rebalance]")
 {
-    BTreeMap<LifeCycleObject, std::string, 4> m;
+    bmap<LifeCycleObject, std::string, 4> m;
     const int total_insertions = 40;
 
     for (int i = 0; i < total_insertions; ++i)
@@ -539,11 +539,11 @@ TEST_CASE_METHOD(BTreeTests, "BTreeMap borrados masivos con reequilibrado", "[bt
 
 TEST_CASE_METHOD(
     BTreeTests,
-    "BTreeMap borrados masivos con reequilibrado: Segmentos grandes del árbol",
+    "bmap borrados masivos con reequilibrado: Segmentos grandes del árbol",
     "[btree][erase][rebalance]"
 )
 {
-    BTreeMap<LifeCycleObject, LifeCycleObject> m;
+    bmap<LifeCycleObject, LifeCycleObject> m;
     const int total = 4096;
     const int segment = 0x200;
 
@@ -582,11 +582,11 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     BTreeTests,
-    "BTreeMap prueba estrés: inserciones, borrados y reinserciones",
+    "bmap prueba estrés: inserciones, borrados y reinserciones",
     "[btree][stress]"
 )
 {
-    BTreeMap<LifeCycleObject, LifeCycleObject> m;
+    bmap<LifeCycleObject, LifeCycleObject> m;
     const int total = 2000;
 
     // Inserciones
