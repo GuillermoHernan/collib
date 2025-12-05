@@ -11,9 +11,9 @@ thread_local darray<IAllocator*> tl_defaultAllocators;
 
 struct MallocAllocator : public IAllocator
 {
-    SAllocResult alloc(size_t bytes, size_t) override { return {malloc(bytes), bytes}; }
+    SAllocResult alloc(byte_size bytes, align) override { return {malloc(bytes), bytes}; }
 
-    size_t tryExpand(size_t, void*) override { return 0; }
+    byte_size tryExpand(byte_size, void*) override { return 0; }
 
     void free(void* buffer) override { ::free(buffer); }
 };
@@ -30,7 +30,7 @@ IAllocator& defaultAllocator()
 
 struct DebugAllocator::SInternal
 {
-    bmap<void*, size_t, 32> allocations;
+    bmap<void*, byte_size, 32> allocations;
 };
 
 DebugAllocator::DebugAllocator(IAllocator& alloc)
@@ -41,9 +41,9 @@ DebugAllocator::DebugAllocator(IAllocator& alloc)
 
 DebugAllocator::~DebugAllocator() { destroy(m_alloc, m_int); }
 
-SAllocResult DebugAllocator::alloc(size_t bytes, size_t align)
+SAllocResult DebugAllocator::alloc(byte_size bytes, align a)
 {
-    SAllocResult result = m_alloc.alloc(bytes, align);
+    SAllocResult result = m_alloc.alloc(bytes, a);
 
     if (result.buffer != nullptr)
         m_int->allocations.insert_or_assign(result.buffer, result.bytes);
@@ -51,9 +51,9 @@ SAllocResult DebugAllocator::alloc(size_t bytes, size_t align)
     return result;
 }
 
-size_t DebugAllocator::tryExpand(size_t bytes, void* ptr)
+byte_size DebugAllocator::tryExpand(byte_size bytes, void* ptr)
 {
-    const size_t newSize = m_alloc.tryExpand(bytes, ptr);
+    const byte_size newSize = m_alloc.tryExpand(bytes, ptr);
 
     if (newSize > bytes)
         m_int->allocations[ptr] = newSize;
@@ -70,7 +70,7 @@ void DebugAllocator::free(void* ptr)
     m_int->allocations.erase(ptr);
 }
 
-size_t DebugAllocator::liveAllocationsCount() const { return m_int->allocations.size(); }
+count_t DebugAllocator::liveAllocationsCount() const { return m_int->allocations.size(); }
 
 std::ostream& DebugAllocator::reportLiveAllocations(std::ostream& os) const
 {

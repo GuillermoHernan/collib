@@ -17,7 +17,7 @@ class darray
 public:
     // Sub-types
     using value_type = Item;
-    using size_type = size_t;
+    using size_type = count_t;
     using difference_type = std::ptrdiff_t;
     using reference = value_type&;
     using const_reference = const value_type&;
@@ -37,8 +37,8 @@ public:
     {
     }
 
-    explicit darray(size_t count, IAllocator& alloc = defaultAllocator());
-    darray(size_t count, const Item& value, IAllocator& alloc = defaultAllocator());
+    explicit darray(size_type count, IAllocator& alloc = defaultAllocator());
+    darray(size_type count, const Item& value, IAllocator& alloc = defaultAllocator());
     darray(const darray& other);
     darray(darray&& other) noexcept;
     darray(std::initializer_list<Item> init);
@@ -55,10 +55,10 @@ public:
     darray& operator=(std::initializer_list<Item> ilist);
 
     // Acceso a elementos
-    Item& operator[](size_t index) { return at(index); }
-    const Item& operator[](size_t index) const { return at(index); }
-    Item& at(size_t index);
-    const Item& at(size_t index) const;
+    Item& operator[](size_type index) { return at(index); }
+    const Item& operator[](size_type index) const { return at(index); }
+    Item& at(size_type index);
+    const Item& at(size_type index) const;
 
     // Comparaciones
     template <Range RangeType>
@@ -97,29 +97,29 @@ public:
 
     // Capacidad
     bool empty() const noexcept { return m_size == 0; }
-    size_t size() const noexcept { return m_size; }
-    // size_t max_size() const noexcept;
-    void reserve(size_t new_cap) { reallocate_if_needed(new_cap); }
-    size_t capacity() const noexcept { return m_capacity; }
+    size_type size() const noexcept { return m_size; }
+    // size_type max_size() const noexcept;
+    void reserve(size_type new_cap) { reallocate_if_needed(new_cap); }
+    size_type capacity() const noexcept { return m_capacity; }
     // void shrink_to_fit();
 
     // Modificadores
     void clear() noexcept;
 
     // Inserciones estándar
-    void insert(size_t pos, const Item& value);
-    void insert(size_t pos, Item&& value);
-    void insert(size_t pos, size_t count, const Item& value);
-    void insert(size_t pos, std::initializer_list<Item> ilist);
+    void insert(size_type pos, const Item& value);
+    void insert(size_type pos, Item&& value);
+    void insert(size_type pos, size_type count, const Item& value);
+    void insert(size_type pos, std::initializer_list<Item> ilist);
 
     template <Range RangeType>
-    void insert(size_t pos, const RangeType& range)
+    void insert(size_type pos, const RangeType& range)
     {
         return insert_range(pos, range);
     }
 
     template <Range RangeType>
-    void insert_range(size_t pos, const RangeType& range);
+    void insert_range(size_type pos, const RangeType& range);
 
     template <Range RangeType>
     void append_range(const RangeType& range);
@@ -128,7 +128,7 @@ public:
     template <typename... Args>
     Item& emplace_back(Args&&... args);
     template <typename... Args>
-    Item& emplace(size_t pos, Args&&... args);
+    Item& emplace(size_type pos, Args&&... args);
 
     // Push/pop back
     void push_back(const Item& value);
@@ -136,11 +136,11 @@ public:
     void pop_back();
 
     // Redimensionar y asignar
-    void resize(size_t count);
-    void resize(size_t count, const Item& value);
+    void resize(size_type count);
+    void resize(size_type count, const Item& value);
     void swap(darray& other) noexcept;
 
-    void assign(size_t count, const Item& value);
+    void assign(size_type count, const Item& value);
     void assign(std::initializer_list<Item> ilist) { return assign_range(ilist); }
 
     template <Range RangeType>
@@ -155,15 +155,15 @@ public:
 private:
     IAllocator* m_allocator;
     Item* m_data;
-    size_t m_size;
-    size_t m_capacity;
+    size_type m_size;
+    size_type m_capacity;
 
-    void reallocate_if_needed(size_t required_size);
-    void shift_right(size_t start_index, size_t count);
+    void reallocate_if_needed(size_type required_size);
+    void shift_right(size_type start_index, size_type count);
 };
 
 template <typename Item>
-darray<Item>::darray(size_t count, IAllocator& alloc)
+darray<Item>::darray(size_type count, IAllocator& alloc)
     : m_allocator(&alloc)
     , m_data(nullptr)
     , m_size(0)
@@ -172,7 +172,7 @@ darray<Item>::darray(size_t count, IAllocator& alloc)
     if (count > 0)
     {
         reallocate_if_needed(count);
-        for (size_t i = 0; i < count; ++i)
+        for (size_type i = 0; i < count; ++i)
             new (m_data + i) Item();
 
         m_size = count;
@@ -180,7 +180,7 @@ darray<Item>::darray(size_t count, IAllocator& alloc)
 }
 
 template <typename Item>
-darray<Item>::darray(size_t count, const Item& value, IAllocator& alloc)
+darray<Item>::darray(size_type count, const Item& value, IAllocator& alloc)
     : m_allocator(&alloc)
     , m_data(nullptr)
     , m_size(0)
@@ -189,7 +189,7 @@ darray<Item>::darray(size_t count, const Item& value, IAllocator& alloc)
     if (count > 0)
     {
         reallocate_if_needed(count);
-        for (size_t i = 0; i < count; ++i)
+        for (size_type i = 0; i < count; ++i)
             new (m_data + i) Item(value);
 
         m_size = count;
@@ -206,7 +206,7 @@ darray<Item>::darray(const darray& other)
     if (other.m_size > 0)
     {
         reallocate_if_needed(other.m_size);
-        for (size_t i = 0; i < other.m_size; ++i)
+        for (size_type i = 0; i < other.m_size; ++i)
             new (m_data + i) Item(other.m_data[i]);
 
         m_size = other.m_size;
@@ -234,14 +234,14 @@ darray<Item>::darray(std::initializer_list<Item> init)
 {
     if (init.size() > 0)
     {
-        reallocate_if_needed(init.size());
-        size_t i = 0;
+        reallocate_if_needed(size_type(init.size()));
+        size_type i = 0;
         for (const auto& item : init)
         {
             new (m_data + i) Item(item);
             ++i;
         }
-        m_size = init.size();
+        m_size = size_type(init.size());
     }
 }
 
@@ -256,12 +256,12 @@ darray<Item>::darray(const RangeType& range, IAllocator& alloc)
     if constexpr (HasSize<RangeType>)
     {
         // Usa size() si existe
-        const size_t count = range.size();
+        const size_type count = (size_type)range.size();
 
         if (count > 0)
         {
             reallocate_if_needed(count);
-            size_t idx = 0;
+            size_type idx = 0;
             for (const auto& item : range)
             {
                 new (m_data + idx) Item(item);
@@ -309,7 +309,7 @@ darray<Item>& darray<Item>::operator=(const darray& other)
     if (other.m_size > 0)
     {
         reallocate_if_needed(other.m_size);
-        for (size_t i = 0; i < other.m_size; ++i)
+        for (size_type i = 0; i < other.m_size; ++i)
             new (m_data + i) Item(other.m_data[i]);
 
         m_size = other.m_size;
@@ -349,14 +349,14 @@ darray<Item>& darray<Item>::operator=(std::initializer_list<Item> ilist)
 
     if (ilist.size() > 0)
     {
-        reallocate_if_needed(ilist.size());
-        size_t i = 0;
+        reallocate_if_needed(size_type(ilist.size()));
+        size_type i = 0;
         for (const auto& item : ilist)
         {
             new (m_data + i) Item(item);
             ++i;
         }
-        m_size = ilist.size();
+        m_size = size_type(ilist.size());
     }
 
     return *this;
@@ -372,7 +372,7 @@ void darray<Item>::clear() noexcept
 }
 
 template <typename Item>
-Item& darray<Item>::at(size_t index)
+Item& darray<Item>::at(size_type index)
 {
     if (index >= m_size)
         throw std::out_of_range("Index out of range");
@@ -381,7 +381,7 @@ Item& darray<Item>::at(size_t index)
 }
 
 template <typename Item>
-const Item& darray<Item>::at(size_t index) const
+const Item& darray<Item>::at(size_type index) const
 {
     if (index >= m_size)
         throw std::out_of_range("Index out of range");
@@ -468,9 +468,9 @@ Item& darray<Item>::emplace_back(Args&&... args)
 }
 
 template <typename Item>
-void darray<Item>::insert(size_t pos, const Item& value)
+void darray<Item>::insert(size_type pos, const Item& value)
 {
-    size_t index = pos;
+    size_type index = pos;
     reallocate_if_needed(m_size + 1);
 
     shift_right(index, 1);
@@ -480,9 +480,9 @@ void darray<Item>::insert(size_t pos, const Item& value)
 }
 
 template <typename Item>
-void darray<Item>::insert(size_t pos, Item&& value)
+void darray<Item>::insert(size_type pos, Item&& value)
 {
-    size_t index = pos;
+    size_type index = pos;
     reallocate_if_needed(m_size + 1);
 
     shift_right(index, 1);
@@ -492,9 +492,9 @@ void darray<Item>::insert(size_t pos, Item&& value)
 }
 
 template <typename Item>
-void darray<Item>::insert(size_t pos, size_t count, const Item& value)
+void darray<Item>::insert(size_type pos, size_type count, const Item& value)
 {
-    size_t index = pos;
+    size_type index = pos;
 
     if (count == 0)
         return;
@@ -504,7 +504,7 @@ void darray<Item>::insert(size_t pos, size_t count, const Item& value)
     shift_right(index, count);
 
     Item* insert_pos = m_data + index;
-    for (size_t i = 0; i < count; ++i)
+    for (size_type i = 0; i < count; ++i)
         new (insert_pos + i) Item(value);
 
     m_size += count;
@@ -512,15 +512,15 @@ void darray<Item>::insert(size_t pos, size_t count, const Item& value)
 
 template <typename Item>
 template <Range RangeType>
-void darray<Item>::insert_range(size_t pos, const RangeType& range)
+void darray<Item>::insert_range(size_type pos, const RangeType& range)
 {
-    size_t index = pos;
+    size_type index = pos;
 
-    size_t count = 0;
+    size_type count = 0;
     if constexpr (HasSize<RangeType>)
-        count = range.size();
+        count = size_type(range.size());
     else
-        count = std::distance(std::begin(range), std::end(range));
+        count = (size_type)std::distance(std::begin(range), std::end(range));
 
     if (count == 0)
         return;
@@ -530,7 +530,7 @@ void darray<Item>::insert_range(size_t pos, const RangeType& range)
 
     Item* insert_pos = m_data + index;
 
-    size_t i = 0;
+    size_type i = 0;
     for (const auto& item : range)
     {
         new (insert_pos + i) Item(item);
@@ -542,16 +542,16 @@ void darray<Item>::insert_range(size_t pos, const RangeType& range)
 }
 
 template <typename Item>
-void darray<Item>::insert(size_t pos, std::initializer_list<Item> ilist)
+void darray<Item>::insert(size_type pos, std::initializer_list<Item> ilist)
 {
     return insert_range(pos, ilist);
 }
 
 template <typename Item>
 template <typename... Args>
-Item& darray<Item>::emplace(size_t pos, Args&&... args)
+Item& darray<Item>::emplace(size_type pos, Args&&... args)
 {
-    size_t index = pos;
+    size_type index = pos;
     reallocate_if_needed(m_size + 1);
 
     // Hacer espacio para el nuevo elemento
@@ -568,18 +568,18 @@ template <typename Item>
 template <Range RangeType>
 void darray<Item>::append_range(const RangeType& range)
 {
-    size_t count = 0;
+    size_type count = 0;
     if constexpr (HasSize<RangeType>)
-        count = range.size();
+        count = size_type(range.size());
     else
-        count = std::distance(std::begin(range), std::end(range));
+        count = (size_type)std::distance(std::begin(range), std::end(range));
 
     if (count == 0)
         return;
 
     reallocate_if_needed(m_size + count);
 
-    size_t i = 0;
+    size_type i = 0;
     for (const auto& item : range)
     {
         new (m_data + m_size + i) Item(item);
@@ -589,12 +589,12 @@ void darray<Item>::append_range(const RangeType& range)
 }
 
 template <typename Item>
-void darray<Item>::resize(size_t count)
+void darray<Item>::resize(size_type count)
 {
     if (count < m_size)
     {
         // Destruir elementos sobrantes
-        for (size_t i = count; i < m_size; ++i)
+        for (size_type i = count; i < m_size; ++i)
             m_data[i].~Item();
         m_size = count;
     }
@@ -602,7 +602,7 @@ void darray<Item>::resize(size_t count)
     {
         reallocate_if_needed(count);
         // Construir nuevos elementos con valor por defecto
-        for (size_t i = m_size; i < count; ++i)
+        for (size_type i = m_size; i < count; ++i)
             new (m_data + i) Item();
         m_size = count;
     }
@@ -610,7 +610,7 @@ void darray<Item>::resize(size_t count)
 }
 
 template <typename Item>
-void darray<Item>::resize(size_t count, const Item& value)
+void darray<Item>::resize(size_type count, const Item& value)
 {
     if (count < m_size)
         resize(count);
@@ -618,7 +618,7 @@ void darray<Item>::resize(size_t count, const Item& value)
     {
         reallocate_if_needed(count);
         // Construir nuevos elementos con 'value'
-        for (size_t i = m_size; i < count; ++i)
+        for (size_type i = m_size; i < count; ++i)
             new (m_data + i) Item(value);
         m_size = count;
     }
@@ -636,14 +636,14 @@ void darray<Item>::swap(darray& other) noexcept
 }
 
 template <typename Item>
-void darray<Item>::assign(size_t count, const Item& value)
+void darray<Item>::assign(size_type count, const Item& value)
 {
     clear();
     if (count == 0)
         return;
 
     reallocate_if_needed(count);
-    for (size_t i = 0; i < count; ++i)
+    for (size_type i = 0; i < count; ++i)
         new (m_data + i) Item(value);
     m_size = count;
 }
@@ -653,17 +653,17 @@ template <Range RangeType>
 void darray<Item>::assign_range(const RangeType& rg)
 {
     clear();
-    size_t count = 0;
+    size_type count = 0;
     if constexpr (HasSize<RangeType>)
-        count = rg.size();
+        count = size_type(rg.size());
     else
-        count = std::distance(std::begin(rg), std::end(rg));
+        count = (size_type)std::distance(std::begin(rg), std::end(rg));
 
     if (count == 0)
         return;
 
     reallocate_if_needed(count);
-    size_t i = 0;
+    size_type i = 0;
     for (const auto& item : rg)
     {
         new (m_data + i) Item(item);
@@ -673,13 +673,13 @@ void darray<Item>::assign_range(const RangeType& rg)
 }
 
 template <typename Item>
-void darray<Item>::shift_right(size_t start_index, size_t count)
+void darray<Item>::shift_right(size_type start_index, size_type count)
 {
     assert(count + m_size <= m_capacity);
 
     // Mover elementos count posiciones a la derecha a partir de start_index
-    size_t destIndex = m_size + count - 1;
-    for (size_t srcIndex = m_size; srcIndex > start_index; --destIndex)
+    size_type destIndex = m_size + count - 1;
+    for (size_type srcIndex = m_size; srcIndex > start_index; --destIndex)
     {
         --srcIndex;
         new (m_data + destIndex) Item(std::move(m_data[srcIndex]));
@@ -688,9 +688,9 @@ void darray<Item>::shift_right(size_t start_index, size_t count)
 }
 
 template <typename Item>
-void darray<Item>::reallocate_if_needed(size_t required_size)
+void darray<Item>::reallocate_if_needed(size_type required_size)
 {
-    const size_t kInitialCapacity = 4;
+    const size_type kInitialCapacity = 4;
 
     if (required_size <= m_capacity)
         return;
@@ -698,23 +698,25 @@ void darray<Item>::reallocate_if_needed(size_t required_size)
     // Intenta expandir sin mover si la memoria ya está asignada
     if (m_data)
     {
-        const size_t expanded_size_bytes = m_allocator->tryExpand(required_size * sizeof(Item), m_data);
+        const byte_size expanded_size_bytes
+            = m_allocator->tryExpand(required_size * sizeof(Item), m_data);
+
         if (expanded_size_bytes >= required_size * sizeof(Item))
         {
             // La expansión fue exitosa, actualizamos capacidad y salimos
-            m_capacity = expanded_size_bytes / sizeof(Item);
+            m_capacity = size_type(expanded_size_bytes / sizeof(Item));
             return;
         }
         // Si la expansión fue insuficiente, continúa con realloc normal
     }
 
     // Nueva capacidad: al menos doble o requerido
-    size_t new_capacity = m_capacity == 0 ? kInitialCapacity : m_capacity * 2;
+    size_type new_capacity = m_capacity == 0 ? kInitialCapacity : m_capacity * 2;
     if (new_capacity < required_size)
         new_capacity = required_size;
 
     // Solicita nueva memoria al asignador
-    const SAllocResult alloc_result = m_allocator->alloc(new_capacity * sizeof(Item), alignof(Item));
+    const SAllocResult alloc_result = m_allocator->alloc(new_capacity * sizeof(Item), align::of<Item>());
     if (alloc_result.buffer == nullptr)
         throw std::bad_alloc();
 
@@ -723,7 +725,7 @@ void darray<Item>::reallocate_if_needed(size_t required_size)
     // Mover o copiar elementos antiguos al nuevo buffer
     try
     {
-        for (size_t i = 0; i < m_size; ++i)
+        for (size_type i = 0; i < m_size; ++i)
         {
             new (new_data + i) Item(std::move(m_data[i]));
             m_data[i].~Item();
@@ -741,7 +743,7 @@ void darray<Item>::reallocate_if_needed(size_t required_size)
         m_allocator->free(m_data);
 
     m_data = new_data;
-    m_capacity = alloc_result.bytes / sizeof(Item);
+    m_capacity = size_type(alloc_result.bytes / sizeof(Item));
 }
 
 } // namespace coll

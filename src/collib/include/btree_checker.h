@@ -96,7 +96,7 @@ private:
         {
             const auto* leaf = static_cast<const CoreType::NodeLeaf*>(node);
             out << indent(level) << "[\n";
-            for (size_t i = 0; i < leaf->count(); ++i)
+            for (count_t i = 0; i < leaf->count(); ++i)
             {
                 out << indent(level + 1);
                 printKey(out, leaf->key(i)) << ": ...\n";
@@ -109,7 +109,7 @@ private:
             out << indent(level) << "{\n";
 
             printNode(out, internal->children[0], level + 1);
-            for (size_t i = 0; i < internal->count(); ++i)
+            for (count_t i = 0; i < internal->count(); ++i)
             {
                 out << indent(level + 1) << "(";
                 printKey(out, internal->key(i)) << ")\n";
@@ -127,7 +127,7 @@ private:
         check(leaf.count() > 0, "Leaf node is empty");
 
         // 2. Las claves deben estar ordenadas estrictamente crecientes
-        for (size_t i = 1; i < leaf.count(); ++i)
+        for (count_t i = 1; i < leaf.count(); ++i)
         {
             if (!(leaf.key(i - 1) < leaf.key(i)))
             {
@@ -186,7 +186,7 @@ private:
         require(internal.count() > 0, "Internal node must have at least one key");
 
         // Verifica orden de claves internas local
-        for (size_t i = 1; i < internal.count(); ++i)
+        for (count_t i = 1; i < internal.count(); ++i)
         {
             if (!(internal.key(i - 1) < internal.key(i)))
                 check(false, "Internal node keys not strictly ordered");
@@ -194,7 +194,7 @@ private:
 
         // Chequea recursivamente los hijos.
         // Cada hijo debe tener claves dentro del rango de separación.
-        for (size_t i = 0; i <= internal.count(); ++i)
+        for (count_t i = 0; i <= internal.count(); ++i)
         {
             const Key& childMin = (i == 0) ? minKey : internal.key(i - 1);
             const Key& childMax = (i == internal.count()) ? maxKey : internal.key(i);
@@ -214,11 +214,11 @@ private:
         require(current != nullptr, "Leftmost leaf is null during leaf-chain check");
 
         Key lastKey = current->key(0);
-        size_t leafCounter = 0;
+        count_t leafCounter = 0;
 
         while (current)
         {
-            for (size_t i = 0; i < current->count(); ++i)
+            for (count_t i = 0; i < current->count(); ++i)
             {
                 if (lastKey <= current->key(i))
                     lastKey = current->key(i);
@@ -276,7 +276,7 @@ private:
     ErrorReport m_errors;
 };
 
-template <typename Key, typename Value, size_t Order>
+template <typename Key, typename Value, byte_size Order>
 class BTreeChecker
 {
 public:
@@ -296,7 +296,7 @@ private:
     CoreCheckerType m_core;
 };
 
-template <typename Key, typename Value, size_t Order>
+template <typename Key, typename Value, byte_size Order>
 BTreeChecker<Key, Value, Order> makeBtreeChecker(const bmap<Key, Value, Order>& map)
 {
     return BTreeChecker<Key, Value, Order>(map);

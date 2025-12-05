@@ -1,5 +1,7 @@
 #pragma once
 
+#include "collib_types.h"
+
 #include <concepts>
 #include <cstddef>
 #include <iterator>
@@ -8,7 +10,7 @@ namespace coll
 {
 template <typename T>
 concept HasSize = requires(T a) {
-    { a.size() } -> std::convertible_to<std::size_t>;
+    { a.size() } -> std::convertible_to<count_t>;
 };
 
 template <typename I>

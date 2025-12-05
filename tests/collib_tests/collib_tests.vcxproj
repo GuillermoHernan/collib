@@ -26,6 +26,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="collib_types_tests.cpp" />
     <ClCompile Include="darray_tests.cpp" />
     <ClCompile Include="life_cycle_object.cpp" />
     <ClCompile Include="mem_check_fixture.cpp" />

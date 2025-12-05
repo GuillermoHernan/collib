@@ -9,9 +9,9 @@ namespace coll
 {
 struct BTreeCoreParams
 {
-    size_t Order = 4;
-    size_t ValueSize = 0;
-    size_t ValueAlign = 1; // Valor mínimo por defecto
+    byte_size Order = 4;
+    byte_size ValueSize = 0;
+    byte_size ValueAlign = 1; // Valor mínimo por defecto
     void (*DestroyValueFn)(void*) = nullptr;
     void (*MoveValueFn)(void* dest, void* src) = nullptr;
 };
@@ -20,9 +20,11 @@ template <typename Key, BTreeCoreParams Params>
 class BTreeCore
 {
 public:
-    static constexpr size_t ValueSize = Params.ValueSize;
-    static constexpr size_t ValueAlign = Params.ValueAlign;
-    static constexpr size_t Order = Params.Order;
+    static constexpr byte_size ValueSize = Params.ValueSize;
+    static constexpr byte_size ValueAlign = Params.ValueAlign;
+    static constexpr byte_size Order = Params.Order;
+
+    using size_type = count_t;
 
     struct InsertResult;
     class Handle;
@@ -38,7 +40,7 @@ public:
     BTreeCore& operator=(const BTreeCore& rhs) = delete;
     BTreeCore& operator=(BTreeCore&& rhs) noexcept;
 
-    size_t size() const { return m_size; }
+    size_type size() const { return m_size; }
     bool empty() const { return m_size == 0; }
 
     IAllocator& allocator() const { return *m_alloc; }
@@ -57,7 +59,7 @@ public:
     Range range(const Key& key) const;
     Range range(const Key& keyLeft, const Key& keyRight) const;
     bool contains(const Key& key) const { return find_first(key).has_value(); }
-    size_t count(const Key& key) const;
+    size_type count(const Key& key) const;
 
     Range begin() const;
     Range end() const { return Range(); }
@@ -78,7 +80,7 @@ public:
             , m_index(0)
         {
         }
-        Handle(typename BTreeCore::NodeLeaf* leaf, size_t index)
+        Handle(typename BTreeCore::NodeLeaf* leaf, size_type index)
             : m_leaf(leaf)
             , m_index(index)
         {
@@ -99,7 +101,7 @@ public:
 
     protected:
         typename BTreeCore::NodeLeaf* m_leaf;
-        size_t m_index;
+        size_type m_index;
 
         friend class BTreeCore;
     }; // class Handle
@@ -121,7 +123,7 @@ public:
             , m_index(0)
         {
         }
-        Range(typename BTreeCore::NodeLeaf* leaf, size_t index)
+        Range(typename BTreeCore::NodeLeaf* leaf, size_type index)
             : m_leaf(leaf)
             , m_endLeaf(nullptr)
             , m_index(index)
@@ -130,9 +132,9 @@ public:
         }
         Range(
             typename BTreeCore::NodeLeaf* leaf,
-            size_t index,
+            size_type index,
             typename BTreeCore::NodeLeaf* endLeaf,
-            size_t endIndex
+            size_type endIndex
         )
             : m_leaf(leaf)
             , m_endLeaf(endLeaf)
@@ -170,8 +172,8 @@ public:
     protected:
         typename BTreeCore::NodeLeaf* m_leaf;
         typename BTreeCore::NodeLeaf* m_endLeaf;
-        size_t m_index;
-        size_t m_endIndex;
+        size_type m_index;
+        size_type m_endIndex;
 
         friend class BTreeCore;
     }; // Class Range
@@ -180,7 +182,7 @@ public:
     {
     public:
         InvRange() = default;
-        InvRange(typename BTreeCore::NodeLeaf* leaf, size_t index)
+        InvRange(typename BTreeCore::NodeLeaf* leaf, size_type index)
             : Range(leaf, index)
         {
         }
@@ -224,14 +226,14 @@ private:
     public:
         ~Node() { resize_keys(0); }
 
-        const Key& key(size_t index) const
+        const Key& key(size_type index) const
         {
             assert(index < m_count);
             return reinterpret_cast<const Key*>(m_key_store)[index];
         }
-        size_t count() const { return m_count; }
+        size_type count() const { return m_count; }
 
-        Key change_key(size_t index, const Key& key)
+        Key change_key(size_type index, const Key& key)
         {
             assert(index < m_count);
             auto* keys = reinterpret_cast<Key*>(m_key_store);
@@ -257,7 +259,7 @@ private:
             ++m_count;
         }
 
-        void insert_key(size_t index, const Key& key)
+        void insert_key(size_type index, const Key& key)
         {
             assert(m_count < Order);
             assert(index <= m_count);
@@ -268,21 +270,21 @@ private:
             auto* keys = reinterpret_cast<Key*>(m_key_store);
 
             new (keys + m_count) Key(std::move(keys[m_count - 1]));
-            for (size_t j = m_count - 1; j > index; --j)
+            for (size_type j = m_count - 1; j > index; --j)
                 keys[j] = std::move(keys[j - 1]);
 
             keys[index] = key;
             ++m_count;
         }
 
-        void remove_key(size_t index)
+        void remove_key(size_type index)
         {
             if (index >= m_count)
                 return;
 
             auto* keys = reinterpret_cast<Key*>(m_key_store);
 
-            size_t i = index;
+            size_type i = index;
             for (; i < m_count - 1; ++i)
                 keys[i] = std::move(keys[i + 1]);
             keys[i].~Key();
@@ -290,13 +292,13 @@ private:
             --m_count;
         }
 
-        void resize_keys(size_t size)
+        void resize_keys(size_type size)
         {
             if (size >= m_count)
                 return;
 
             auto* keys = reinterpret_cast<Key*>(m_key_store);
-            for (size_t i = size; i < m_count; ++i)
+            for (size_type i = size; i < m_count; ++i)
                 keys[i].~Key();
 
             m_count = size;
@@ -304,7 +306,7 @@ private:
 
     private:
         alignas(alignof(Key)) std::byte m_key_store[sizeof(Key) * Order];
-        size_t m_count = 0;
+        size_type m_count = 0;
     }; // class Node
 
     struct SplitInternalResult
@@ -366,7 +368,7 @@ private:
 
             assert(right != nullptr);
 
-            for (size_t i = 0; i < right->count(); ++i)
+            for (size_type i = 0; i < right->count(); ++i)
             {
                 left->add_key(std::move(right->key(i)));
                 if constexpr (Params.MoveValueFn != nullptr)
@@ -382,11 +384,11 @@ private:
 
         NodeLeaf* split(void* mem_block)
         {
-            size_t mid = this->count() / 2;
+            size_type mid = this->count() / 2;
             NodeLeaf* sibling = new (mem_block) NodeLeaf;
-            const size_t sibling_count = this->count() - mid;
+            const size_type sibling_count = this->count() - mid;
 
-            for (size_t i = 0; i < sibling_count; ++i)
+            for (size_type i = 0; i < sibling_count; ++i)
             {
                 sibling->add_key(std::move(this->key(mid + i)));
 
@@ -402,7 +404,7 @@ private:
             return sibling;
         }
 
-        void* insert(size_t index, const Key& key)
+        void* insert(size_type index, const Key& key)
         {
             assert(index <= this->count());
             assert(this->count() < Order);
@@ -410,7 +412,7 @@ private:
             // Make room for new value
             if constexpr (Params.MoveValueFn != nullptr)
             {
-                for (size_t j = this->count(); j > index; --j)
+                for (size_type j = this->count(); j > index; --j)
                 {
                     Params.MoveValueFn(this->values[j].data, this->values[j - 1].data);
                     Params.DestroyValueFn(this->values[j - 1].data);
@@ -422,13 +424,13 @@ private:
             return values[index].data;
         }
 
-        void remove(size_t index)
+        void remove(size_type index)
         {
             // compactar
             if constexpr (Params.MoveValueFn != nullptr)
             {
                 Params.DestroyValueFn(this->values[index].data);
-                for (size_t j = index; j + 1 < this->count(); ++j)
+                for (size_type j = index; j + 1 < this->count(); ++j)
                 {
                     Params.MoveValueFn(this->values[j].data, this->values[j + 1].data);
                     Params.DestroyValueFn(this->values[j + 1].data);
@@ -457,7 +459,7 @@ private:
             assert(this->next != nullptr);
             assert(this->count() > 0);
             NodeLeaf* right = this->next;
-            const size_t lastIndex = this->count() - 1;
+            const size_type lastIndex = this->count() - 1;
 
             void* valuePtr = right->insert(0, this->key(lastIndex));
 
@@ -482,13 +484,13 @@ private:
             this->add_key(std::move(key));
         }
 
-        void insert_left(size_t index, Node* child, const Key& key)
+        void insert_left(size_type index, Node* child, const Key& key)
         {
             this->insert_key(index, key);
             this->insert_child(index, child);
         }
 
-        void insert_right(size_t index, const Key& key, Node* child)
+        void insert_right(size_type index, const Key& key, Node* child)
         {
             this->insert_key(index, key);
             this->insert_child(index + 1, child);
@@ -500,13 +502,13 @@ private:
             this->children[this->count()] = child;
         }
 
-        void remove_left(size_t index)
+        void remove_left(size_type index)
         {
             this->remove_child(index);
             this->remove_key(index);
         }
 
-        void remove_right(size_t index)
+        void remove_right(size_type index)
         {
             this->remove_child(index + 1);
             this->remove_key(index);
@@ -516,7 +518,7 @@ private:
         {
             assert(this->children[0] != nullptr);
 
-            size_t mid_index = this->count() / 2;
+            size_type mid_index = this->count() / 2;
             NodeInternal* sibling = new (mem_block) NodeInternal(this->children[mid_index + 1]);
             SplitInternalResult result {sibling, this->key(mid_index)};
 
@@ -524,7 +526,7 @@ private:
             // - mid_index keys remain in the original node.
             // - Next 1 (one) key is returned, will be used as separator in parent node.
             // - The rest go into 'sibling' node.
-            for (size_t i = mid_index + 1; i < this->count(); ++i)
+            for (size_type i = mid_index + 1; i < this->count(); ++i)
                 sibling->add(this->key(i), this->children[i + 1]);
 
             this->resize_keys(mid_index);
@@ -539,21 +541,21 @@ private:
         {
             this->add(separator, right->children[0]);
 
-            for (size_t i = 0; i < right->count(); ++i)
+            for (size_type i = 0; i < right->count(); ++i)
                 this->add(right->key(i), right->children[i + 1]);
         }
 
     private:
-        void remove_child(size_t index)
+        void remove_child(size_type index)
         {
-            for (size_t i = index; i < this->count(); ++i)
+            for (size_type i = index; i < this->count(); ++i)
                 children[i] = children[i + 1];
         }
 
-        void insert_child(size_t index, Node* child)
+        void insert_child(size_type index, Node* child)
         {
             assert(index <= this->count());
-            for (size_t i = this->count(); i > index; --i)
+            for (size_type i = this->count(); i > index; --i)
                 children[i] = children[i - 1];
 
             children[index] = child;
@@ -563,7 +565,7 @@ private:
     struct LeafPos
     {
         NodeLeaf* leaf;
-        size_t index;
+        size_type index;
     };
 
     struct InsertResultInternal : public InsertResult
@@ -573,7 +575,7 @@ private:
 
     Node* m_root;
     IAllocator* m_alloc;
-    size_t m_size = 0;
+    size_type m_size = 0;
     unsigned m_height;
 
     template <typename T>
@@ -593,23 +595,23 @@ private:
 
     bool erase_recursive(Node* node, const Key& key, unsigned level);
     bool erase_from_leaf(NodeLeaf* leaf, const Key& key);
-    void fix_underflow(NodeInternal* parent, size_t idx, unsigned level);
-    void rotate_left_leaf(NodeInternal* parent, size_t parentIndex);
-    void rotate_right_leaf(NodeInternal* parent, size_t parentIndex);
+    void fix_underflow(NodeInternal* parent, size_type idx, unsigned level);
+    void rotate_left_leaf(NodeInternal* parent, size_type parentIndex);
+    void rotate_right_leaf(NodeInternal* parent, size_type parentIndex);
     void rotate_left_internal(
         NodeInternal* left,
         NodeInternal* right,
         NodeInternal* parent,
-        size_t parentIndex
+        size_type parentIndex
     );
     void rotate_right_internal(
         NodeInternal* left,
         NodeInternal* right,
         NodeInternal* parent,
-        size_t parentIndex
+        size_type parentIndex
     );
-    void merge_leaf(NodeInternal* parent, size_t parentIndex);
-    void merge_internal(NodeInternal* parent, size_t parentIndex);
+    void merge_leaf(NodeInternal* parent, size_type parentIndex);
+    void merge_internal(NodeInternal* parent, size_type parentIndex);
 };
 
 // ------------------------------------------------------------
@@ -710,7 +712,7 @@ void BTreeCore<Key, Params>::delete_subtree(Node* node, unsigned level)
 
         if constexpr (Params.DestroyValueFn != nullptr)
         {
-            for (size_t i = 0; i < leaf->count(); ++i)
+            for (size_type i = 0; i < leaf->count(); ++i)
                 Params.DestroyValueFn(leaf->values[i].data);
         }
 
@@ -719,7 +721,7 @@ void BTreeCore<Key, Params>::delete_subtree(Node* node, unsigned level)
     else
     {
         NodeInternal* internal = static_cast<NodeInternal*>(node);
-        for (size_t i = 0; i <= internal->count(); ++i)
+        for (size_type i = 0; i <= internal->count(); ++i)
             delete_subtree(internal->children[i], level + 1);
         freeNode(internal);
     }
@@ -749,7 +751,7 @@ template <typename Key, BTreeCoreParams Params>
 typename BTreeCore<Key, Params>::InsertResultInternal
 BTreeCore<Key, Params>::insert_at_leaf(NodeLeaf* leaf, const Key& key)
 {
-    size_t i = 0;
+    size_type i = 0;
     while (i < leaf->count() && leaf->key(i) < key)
         ++i;
 
@@ -776,7 +778,7 @@ template <typename Key, BTreeCoreParams Params>
 typename BTreeCore<Key, Params>::InsertResultInternal
 BTreeCore<Key, Params>::insert_at_internal(NodeInternal* node, const Key& key, unsigned level)
 {
-    size_t i = 0;
+    size_type i = 0;
     while (i < node->count() && !(key < node->key(i)))
         ++i;
 
@@ -847,7 +849,7 @@ typename BTreeCore<Key, Params>::Handle BTreeCore<Key, Params>::lower_bound(cons
     {
         NodeInternal* internal = static_cast<NodeInternal*>(node);
 
-        size_t i = 0;
+        size_type i = 0;
         while (i < internal->count() && !(key < internal->key(i)))
             ++i;
 
@@ -856,7 +858,7 @@ typename BTreeCore<Key, Params>::Handle BTreeCore<Key, Params>::lower_bound(cons
     }
 
     NodeLeaf* leaf = static_cast<NodeLeaf*>(node);
-    for (size_t i = 0; i < leaf->count(); ++i)
+    for (size_type i = 0; i < leaf->count(); ++i)
     {
         if (!(leaf->key(i) < key))
             return Handle(leaf, i);
@@ -883,10 +885,10 @@ typename BTreeCore<Key, Params>::Range BTreeCore<Key, Params>::range(const Key& 
 }
 
 template <typename Key, BTreeCoreParams Params>
-size_t BTreeCore<Key, Params>::count(const Key& key) const
+count_t BTreeCore<Key, Params>::count(const Key& key) const
 {
     // TODO: We should aim to make an O(log(n)) implementation.
-    size_t counter = 0;
+    size_type counter = 0;
 
     for (auto r = range(key); !r.empty(); ++r)
         ++counter;
@@ -1007,7 +1009,7 @@ bool BTreeCore<Key, Params>::erase_recursive(Node* node, const Key& key, unsigne
         return erase_from_leaf(static_cast<NodeLeaf*>(node), key);
 
     NodeInternal* internal = static_cast<NodeInternal*>(node);
-    size_t i = 0;
+    size_type i = 0;
     while (i < internal->count() && !(key < internal->key(i)))
         ++i;
 
@@ -1026,7 +1028,7 @@ bool BTreeCore<Key, Params>::erase_recursive(Node* node, const Key& key, unsigne
 template <typename Key, BTreeCoreParams Params>
 bool BTreeCore<Key, Params>::erase_from_leaf(NodeLeaf* leaf, const Key& key)
 {
-    size_t i = 0;
+    size_type i = 0;
     while (i < leaf->count() && leaf->key(i) < key)
         ++i;
 
@@ -1043,13 +1045,13 @@ bool BTreeCore<Key, Params>::erase_from_leaf(NodeLeaf* leaf, const Key& key)
 // ------------------------------------------------------------
 
 template <typename Key, BTreeCoreParams Params>
-void BTreeCore<Key, Params>::fix_underflow(NodeInternal* parent, size_t idx, unsigned level)
+void BTreeCore<Key, Params>::fix_underflow(NodeInternal* parent, size_type idx, unsigned level)
 {
     Node* child = parent->children[idx];
     bool isLeaf = (level == m_height - 2);
 
     // Si el nodo no está por debajo del mínimo, no hacemos nada
-    size_t minKeys = (Order + 1) / 2 - 1;
+    size_type minKeys = (Order + 1) / 2 - 1;
     if (child->count() >= minKeys)
         return;
 
@@ -1110,7 +1112,7 @@ void BTreeCore<Key, Params>::fix_underflow(NodeInternal* parent, size_t idx, uns
 // ------------------------------------------------------------
 
 template <typename Key, BTreeCoreParams Params>
-void BTreeCore<Key, Params>::rotate_left_leaf(NodeInternal* parent, size_t parentIndex)
+void BTreeCore<Key, Params>::rotate_left_leaf(NodeInternal* parent, size_type parentIndex)
 {
     NodeLeaf* right = static_cast<NodeLeaf*>(parent->children[parentIndex + 1]);
     right->rotate_left();
@@ -1118,7 +1120,7 @@ void BTreeCore<Key, Params>::rotate_left_leaf(NodeInternal* parent, size_t paren
 }
 
 template <typename Key, BTreeCoreParams Params>
-void BTreeCore<Key, Params>::rotate_right_leaf(NodeInternal* parent, size_t parentIndex)
+void BTreeCore<Key, Params>::rotate_right_leaf(NodeInternal* parent, size_type parentIndex)
 {
     NodeLeaf* left = static_cast<NodeLeaf*>(parent->children[parentIndex]);
     NodeLeaf* right = static_cast<NodeLeaf*>(parent->children[parentIndex + 1]);
@@ -1135,7 +1137,7 @@ void BTreeCore<Key, Params>::rotate_left_internal(
     NodeInternal* left,
     NodeInternal* right,
     NodeInternal* parent,
-    size_t parentIndex
+    size_type parentIndex
 )
 {
     assert(right->count() > 1);
@@ -1150,7 +1152,7 @@ void BTreeCore<Key, Params>::rotate_right_internal(
     NodeInternal* left,
     NodeInternal* right,
     NodeInternal* parent,
-    size_t parentIndex
+    size_type parentIndex
 )
 {
     assert(left->count() > 1);
@@ -1165,7 +1167,7 @@ void BTreeCore<Key, Params>::rotate_right_internal(
 // ------------------------------------------------------------
 
 template <typename Key, BTreeCoreParams Params>
-void BTreeCore<Key, Params>::merge_leaf(NodeInternal* parent, size_t parentIndex)
+void BTreeCore<Key, Params>::merge_leaf(NodeInternal* parent, size_type parentIndex)
 {
     auto* left = static_cast<NodeLeaf*>(parent->children[parentIndex]);
 
@@ -1176,7 +1178,7 @@ void BTreeCore<Key, Params>::merge_leaf(NodeInternal* parent, size_t parentIndex
 }
 
 template <typename Key, BTreeCoreParams Params>
-void BTreeCore<Key, Params>::merge_internal(NodeInternal* parent, size_t parentIndex)
+void BTreeCore<Key, Params>::merge_internal(NodeInternal* parent, size_type parentIndex)
 {
     auto* left = static_cast<NodeInternal*>(parent->children[parentIndex]);
     auto* right = static_cast<NodeInternal*>(parent->children[parentIndex + 1]);

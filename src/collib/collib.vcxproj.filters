@@ -12,5 +12,6 @@
     <ClInclude Include="include\darray.h" />
     <ClInclude Include="include\vrange.h" />
     <ClInclude Include="include\collib_concepts.h" />
+    <ClInclude Include="include\collib_types.h" />
   </ItemGroup>
 </Project>

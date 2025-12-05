@@ -30,7 +30,7 @@ TEST_CASE_METHOD(DarrayTests, "Pruebas básicas de darray", "[darray]")
         darray<LifeCycleObject> da(5, alloc);
         CHECK(!da.empty());
         CHECK(da.size() == 5);
-        for (size_t i = 0; i < da.size(); ++i)
+        for (count_t i = 0; i < da.size(); ++i)
         {
             CHECK(da[i] == 0); // int default initialized = 0
         }
@@ -40,7 +40,7 @@ TEST_CASE_METHOD(DarrayTests, "Pruebas básicas de darray", "[darray]")
     {
         darray<LifeCycleObject> da(3, 7, alloc);
         CHECK(da.size() == 3);
-        for (size_t i = 0; i < da.size(); ++i)
+        for (count_t i = 0; i < da.size(); ++i)
         {
             CHECK(da[i] == 7);
         }
@@ -51,7 +51,7 @@ TEST_CASE_METHOD(DarrayTests, "Pruebas básicas de darray", "[darray]")
         std::vector<int> v = {1, 2, 3};
         darray<LifeCycleObject> da(v);
         CHECK(da.size() == v.size());
-        for (size_t i = 0; i < da.size(); ++i)
+        for (count_t i = 0; i < da.size(); ++i)
         {
             CHECK(da[i] == v[i]);
         }
@@ -71,7 +71,7 @@ TEST_CASE_METHOD(DarrayTests, "Pruebas básicas de darray", "[darray]")
         darray<LifeCycleObject> da1(3, 5, alloc);
         darray<LifeCycleObject> da2 = da1;
         CHECK(da2.size() == da1.size());
-        for (size_t i = 0; i < da2.size(); ++i)
+        for (count_t i = 0; i < da2.size(); ++i)
         {
             CHECK(da2[i] == 5);
         }
@@ -127,10 +127,10 @@ TEST_CASE_METHOD(
     std::forward_list<int> sourceList = {10, 20, 30, 40};
     darray<LifeCycleObject> da(sourceList);
 
-    size_t expected_size = 4; // forward_list no tiene size(), pero conocemos tamaño
+    const count_t expected_size = 4; // forward_list no tiene size(), pero conocemos tamaño
     CHECK(da.size() == expected_size);
 
-    size_t idx = 0;
+    count_t idx = 0;
     for (int val : sourceList)
     {
         CHECK(da[idx++] == val);
@@ -143,7 +143,7 @@ TEST_CASE_METHOD(DarrayTests, "darray: Constructor con rango fuente sin size()",
         = {10, 20, 30}; // std::list no tiene size() accesible en misma forma que vector
     darray<LifeCycleObject> da(sourceList);
     CHECK(da.size() == sourceList.size());
-    size_t i = 0;
+    count_t i = 0;
     for (auto val : sourceList)
     {
         CHECK(da[i++] == val);
@@ -259,7 +259,7 @@ TEST_CASE_METHOD(DarrayTests, "darray: Accesos fuera de rango lanzan excepciones
 {
     IAllocator& alloc = defaultAllocator();
     darray<LifeCycleObject> da(3, alloc);
-    for (size_t i = 0; i < 3; ++i)
+    for (count_t i = 0; i < 3; ++i)
         da[i] = (int)i;
 
     CHECK_THROWS_AS(da.at(3), std::out_of_range);
@@ -305,16 +305,16 @@ TEST_CASE_METHOD(
 
     SECTION("Inserción masiva para estrés por crecimiento dinámico")
     {
-        size_t const large_num = 10000;
+        count_t const large_num = 10000;
         darray<LifeCycleObject> da_large(alloc);
-        for (size_t i = 0; i < large_num; ++i)
+        for (count_t i = 0; i < large_num; ++i)
         {
             da_large.push_back(int(i));
         }
         CHECK(da_large.size() == large_num);
         CHECK(da_large.capacity() >= large_num);
         bool correct = true;
-        for (size_t i = 0; i < large_num; ++i)
+        for (count_t i = 0; i < large_num; ++i)
         {
             if (da_large[i] != int(i))
             {
@@ -349,7 +349,7 @@ TEST_CASE_METHOD(DarrayTests, "darray: insert variantes", "[darray][insert]")
         CHECK(da[1] == 2);
     }
 
-    SECTION("insert(const_iterator, size_t count, const Item&) con count > 0")
+    SECTION("insert(const_iterator, count_t count, const Item&) con count > 0")
     {
         darray<LifeCycleObject> da = {1, 4, 5};
         da.insert(1, 2, 2); // Insertar dos 2s en posición 1
@@ -359,7 +359,7 @@ TEST_CASE_METHOD(DarrayTests, "darray: insert variantes", "[darray][insert]")
         CHECK(da[3] == 4);
     }
 
-    SECTION("insert(const_iterator, size_t count, const Item&) con count == 0")
+    SECTION("insert(const_iterator, count_t count, const Item&) con count == 0")
     {
         darray<LifeCycleObject> da = {1, 4, 5};
         da.insert(1, 0, 99); // Insertar cero veces, sin cambios
@@ -572,7 +572,7 @@ TEST_CASE_METHOD(DarrayTests, "darray: assign - tamaño y valor", "[darray][assi
     darray<LifeCycleObject> da;
     da.assign(5, 42);
     REQUIRE(da.size() == 5);
-    for (size_t i = 0; i < da.size(); ++i)
+    for (count_t i = 0; i < da.size(); ++i)
         REQUIRE(da[i] == 42);
 }
 

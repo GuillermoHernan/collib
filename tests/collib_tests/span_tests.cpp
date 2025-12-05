@@ -22,7 +22,7 @@ TEST_CASE("Pruebas básicas de span", "[span]")
     {
         REQUIRE(s.front() == 1);
         REQUIRE(s.back() == 5);
-        for (size_t i = 0; i < s.size(); ++i)
+        for (count_t i = 0; i < s.size(); ++i)
         {
             REQUIRE(s[i] == array[i]);
             REQUIRE(s.at(i) == array[i]);
@@ -46,7 +46,7 @@ TEST_CASE("Pruebas básicas de span", "[span]")
 
     SECTION("Iteración mediante range for y comparación con Sentinel")
     {
-        size_t count = 0;
+        count_t count = 0;
         for (const auto& value : s)
         {
             REQUIRE(value == array[count++]);

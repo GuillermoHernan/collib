@@ -8,10 +8,10 @@
 namespace coll
 {
 
-template <typename Key, typename Value, size_t Order = 4>
+template <typename Key, typename Value, byte_size Order = 4>
 class bmap
 {
-    template <typename Key, typename Value, size_t Order>
+    template <typename Key, typename Value, byte_size Order>
     friend class BTreeChecker;
 
     static void destroyValue(void* valueBuffer) { reinterpret_cast<Value*>(valueBuffer)->~Value(); }
@@ -41,6 +41,7 @@ public:
     // STL - compatible child types
     using key_type = Key;
     using mapped_type = Value;
+    using size_type = BTreeCoreType::size_type;
 
     bmap(IAllocator& alloc = defaultAllocator())
         : m_core(alloc)
@@ -69,7 +70,7 @@ public:
     void clear();
 
     bool contains(const Key& key) const { return m_core.contains(key); }
-    size_t count(const Key& key) const { return m_core.count(key); }
+    size_type count(const Key& key) const { return m_core.count(key); }
 
     Range begin() const { return Range(m_core.begin()); }
     Sentinel end() const { return Sentinel(); }
@@ -77,7 +78,7 @@ public:
     InvRange rbegin() const { return InvRange(m_core.rbegin()); }
     Sentinel rend() const { return Sentinel(); }
 
-    size_t size() const { return m_core.size(); }
+    size_type size() const { return m_core.size(); }
     bool empty() const { return m_core.empty(); }
 
     Value& operator[](const Key& key);
@@ -207,7 +208,7 @@ private:
 // ------------------------------------------------------------
 // Constructores
 // ------------------------------------------------------------
-template <typename Key, typename Value, size_t Order>
+template <typename Key, typename Value, byte_size Order>
 bmap<Key, Value, Order>::bmap(std::initializer_list<Entry> init_list, IAllocator& alloc)
     : bmap(alloc)
 {
@@ -216,7 +217,7 @@ bmap<Key, Value, Order>::bmap(std::initializer_list<Entry> init_list, IAllocator
 }
 
 // Definición del constructor de copia
-template <typename Key, typename Value, size_t Order>
+template <typename Key, typename Value, byte_size Order>
 bmap<Key, Value, Order>::bmap(const bmap& rhs)
     : bmap(rhs.m_core.allocator())
 {
@@ -226,7 +227,7 @@ bmap<Key, Value, Order>::bmap(const bmap& rhs)
 }
 
 // Definición del operador de copia
-template <typename Key, typename Value, size_t Order>
+template <typename Key, typename Value, byte_size Order>
 bmap<Key, Value, Order>& bmap<Key, Value, Order>::operator=(const bmap& rhs)
 {
     if (this == &rhs)
@@ -243,13 +244,13 @@ bmap<Key, Value, Order>& bmap<Key, Value, Order>::operator=(const bmap& rhs)
 // Inicialización y limpieza
 // ------------------------------------------------------------
 
-template <typename Key, typename Value, size_t Order>
+template <typename Key, typename Value, byte_size Order>
 bmap<Key, Value, Order>::~bmap()
 {
     clear();
 }
 
-template <typename Key, typename Value, size_t Order>
+template <typename Key, typename Value, byte_size Order>
 void bmap<Key, Value, Order>::clear()
 {
     m_core.clear();
@@ -258,7 +259,7 @@ void bmap<Key, Value, Order>::clear()
 // ------------------------------------------------------------
 // Inserción pública
 // ------------------------------------------------------------
-template <typename Key, typename Value, size_t Order>
+template <typename Key, typename Value, byte_size Order>
 typename bmap<Key, Value, Order>::InsertResult
 bmap<Key, Value, Order>::insert(const Key& key, const Value& value)
 {
@@ -272,7 +273,7 @@ bmap<Key, Value, Order>::insert(const Key& key, const Value& value)
     return {Handle(location), true};
 }
 
-template <typename Key, typename Value, size_t Order>
+template <typename Key, typename Value, byte_size Order>
 template <typename... Args>
 typename bmap<Key, Value, Order>::InsertResult
 bmap<Key, Value, Order>::emplace(const Key& key, Args&&... args)
@@ -287,7 +288,7 @@ bmap<Key, Value, Order>::emplace(const Key& key, Args&&... args)
     return {Handle(location), true};
 }
 
-template <typename Key, typename Value, size_t Order>
+template <typename Key, typename Value, byte_size Order>
 template <typename M>
 typename bmap<Key, Value, Order>::InsertResult
 bmap<Key, Value, Order>::insert_or_assign(const Key& key, M&& obj)
@@ -310,7 +311,7 @@ bmap<Key, Value, Order>::insert_or_assign(const Key& key, M&& obj)
 // ------------------------------------------------------------
 // Búsqueda
 // ------------------------------------------------------------
-template <typename Key, typename Value, size_t Order>
+template <typename Key, typename Value, byte_size Order>
 typename bmap<Key, Value, Order>::Handle bmap<Key, Value, Order>::find(const Key& key) const
 {
     return Handle {m_core.find_first(key)};
@@ -321,7 +322,7 @@ typename bmap<Key, Value, Order>::Handle bmap<Key, Value, Order>::find(const Key
 // ------------------------------------------------------------
 
 // Definición operator[]
-template <typename Key, typename Value, size_t Order>
+template <typename Key, typename Value, byte_size Order>
 Value& bmap<Key, Value, Order>::operator[](const Key& key)
 {
     auto [location, valueBuffer, newEntry] = m_core.insert(key);
@@ -333,7 +334,7 @@ Value& bmap<Key, Value, Order>::operator[](const Key& key)
 }
 
 // Devuelve referencia const a Value existente, o lanza si no está.
-template <typename Key, typename Value, size_t Order>
+template <typename Key, typename Value, byte_size Order>
 const Value& bmap<Key, Value, Order>::at(const Key& key) const
 {
     auto h = find(key);
@@ -347,9 +348,8 @@ const Value& bmap<Key, Value, Order>::at(const Key& key) const
 // ------------------------------------------------------------
 // Comparación
 // ------------------------------------------------------------
-template <typename Key, typename Value, size_t Order>
-std::strong_ordering
-operator<=>(const bmap<Key, Value, Order>& lhs, const bmap<Key, Value, Order>& rhs)
+template <typename Key, typename Value, byte_size Order>
+std::strong_ordering operator<=>(const bmap<Key, Value, Order>& lhs, const bmap<Key, Value, Order>& rhs)
 {
     auto rhs_range = rhs.begin();
 
@@ -372,7 +372,7 @@ operator<=>(const bmap<Key, Value, Order>& lhs, const bmap<Key, Value, Order>& r
     return rhs_range.empty() ? std::strong_ordering::equal : std::strong_ordering::less;
 }
 
-template <typename Key, typename Value, size_t Order>
+template <typename Key, typename Value, byte_size Order>
 bool operator==(const bmap<Key, Value, Order>& lhs, const bmap<Key, Value, Order>& rhs)
 {
     return (lhs <=> rhs) == 0;
