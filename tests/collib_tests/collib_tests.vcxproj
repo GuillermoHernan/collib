@@ -46,8 +46,11 @@
     <ClInclude Include="pch-collib-tests.h" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\collib\collib.vcxproj">
+    <ProjectReference Include="..\..\collib.vcxproj">
       <Project>{93b43d32-7e48-437e-a6df-daa4f2ea8a33}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\external\catch2\catch2.vcxproj">
+      <Project>{32eb6cb1-578f-4dd8-ab74-cbf1d5b0287d}</Project>
     </ProjectReference>
   </ItemGroup>
   <PropertyGroup Label="Globals">
@@ -109,7 +112,7 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>../../src/collib/include;..\..\external\catch2</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../include;../../external\catch2</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch-collib-tests.h</PrecompiledHeaderFile>
     </ClCompile>
@@ -127,7 +130,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>../../src/collib/include;..\..\external\catch2</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../include;../../external\catch2</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch-collib-tests.h</PrecompiledHeaderFile>
     </ClCompile>
@@ -143,7 +146,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>../../src/collib/include;..\..\external\catch2</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../include;../../external\catch2</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch-collib-tests.h</PrecompiledHeaderFile>
     </ClCompile>
@@ -161,7 +164,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>../../src/collib/include;..\..\external\catch2</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../include;../../external\catch2</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch-collib-tests.h</PrecompiledHeaderFile>
     </ClCompile>
