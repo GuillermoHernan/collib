@@ -22,7 +22,7 @@
  
 #pragma once
 #include "../src/btree_core.h"
-#include "allocator2.h"
+#include "allocator.h"
 
 #include <cstddef>
 #include <stdexcept>

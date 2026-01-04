@@ -19,10 +19,10 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\allocator2.cpp" />
+    <ClCompile Include="src\allocator.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="include\allocator2.h" />
+    <ClInclude Include="include\allocator.h" />
     <ClInclude Include="include\bmap.h" />
     <ClInclude Include="include\btree_checker.h" />
     <ClInclude Include="include\collib_concepts.h" />

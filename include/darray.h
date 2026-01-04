@@ -27,7 +27,7 @@
 #include <initializer_list>
 #include <utility>
 
-#include "allocator2.h"
+#include "allocator.h"
 #include "collib_concepts.h"
 #include "span.h"
 

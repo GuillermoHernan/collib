@@ -22,7 +22,7 @@
  
 #pragma once
 
-#include "allocator2.h"
+#include "allocator.h"
 #include "collib_concepts.h"
 
 #include <functional>

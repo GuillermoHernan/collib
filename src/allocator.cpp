@@ -20,7 +20,7 @@
  * SOFTWARE.
  */
  
-#include "allocator2.h"
+#include "allocator.h"
 
 #include "collib_version.h"
 #include "bmap.h"
