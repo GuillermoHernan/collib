@@ -1,3 +1,25 @@
+/*
+ * Copyright (c) 2026 Guillermo Hernan Martin
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+ 
 #pragma once
 
 #include "bmap.h"
@@ -123,7 +145,7 @@ private:
 
     void checkLeaf(const typename CoreType::NodeLeaf& leaf)
     {
-        // 1. La hoja no debe estar vacía
+        // 1. La hoja no debe estar vacÃ­a
         check(leaf.count() > 0, "Leaf node is empty");
 
         // 2. Las claves deben estar ordenadas estrictamente crecientes
@@ -154,7 +176,7 @@ private:
 
         if (isLeaf)
         {
-            // Comprobación de nodo hoja
+            // ComprobaciÃ³n de nodo hoja
             const auto& leaf = static_cast<const typename CoreType::NodeLeaf&>(node);
             require(leaf.count() > 0, "Empty leaf during recursive check");
             checkLeaf(leaf);
@@ -193,7 +215,7 @@ private:
         }
 
         // Chequea recursivamente los hijos.
-        // Cada hijo debe tener claves dentro del rango de separación.
+        // Cada hijo debe tener claves dentro del rango de separaciÃ³n.
         for (count_t i = 0; i <= internal.count(); ++i)
         {
             const Key& childMin = (i == 0) ? minKey : internal.key(i - 1);

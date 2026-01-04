@@ -1,3 +1,25 @@
+/*
+ * Copyright (c) 2026 Guillermo Hernan Martin
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+ 
 #pragma once
 
 #include <compare>
@@ -49,7 +71,7 @@ public:
     // Destructor
     ~darray();
 
-    // AsignaciÛn
+    // Asignaci√≥n
     darray& operator=(const darray& other);
     darray& operator=(darray&& other) noexcept;
     darray& operator=(std::initializer_list<Item> ilist);
@@ -106,7 +128,7 @@ public:
     // Modificadores
     void clear() noexcept;
 
-    // Inserciones est·ndar
+    // Inserciones est√°ndar
     void insert(size_type pos, const Item& value);
     void insert(size_type pos, Item&& value);
     void insert(size_type pos, size_type count, const Item& value);
@@ -334,7 +356,7 @@ darray<Item>& darray<Item>::operator=(darray&& other) noexcept
     m_capacity = other.m_capacity;
     m_allocator = other.m_allocator;
 
-    // Dejar otro en estado v·lido vacÌo
+    // Dejar otro en estado v√°lido vac√≠o
     other.m_data = nullptr;
     other.m_size = 0;
     other.m_capacity = 0;
@@ -695,7 +717,7 @@ void darray<Item>::reallocate_if_needed(size_type required_size)
     if (required_size <= m_capacity)
         return;
 
-    // Intenta expandir sin mover si la memoria ya est· asignada
+    // Intenta expandir sin mover si la memoria ya est√° asignada
     if (m_data)
     {
         const byte_size expanded_size_bytes
@@ -703,11 +725,11 @@ void darray<Item>::reallocate_if_needed(size_type required_size)
 
         if (expanded_size_bytes >= required_size * sizeof(Item))
         {
-            // La expansiÛn fue exitosa, actualizamos capacidad y salimos
+            // La expansi√≥n fue exitosa, actualizamos capacidad y salimos
             m_capacity = size_type(expanded_size_bytes / sizeof(Item));
             return;
         }
-        // Si la expansiÛn fue insuficiente, contin˙a con realloc normal
+        // Si la expansi√≥n fue insuficiente, contin√∫a con realloc normal
     }
 
     // Nueva capacidad: al menos doble o requerido

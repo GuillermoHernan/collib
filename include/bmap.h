@@ -1,3 +1,25 @@
+/*
+ * Copyright (c) 2026 Guillermo Hernan Martin
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+ 
 #pragma once
 #include "../src/btree_core.h"
 #include "allocator2.h"
@@ -216,7 +238,7 @@ bmap<Key, Value, Order>::bmap(std::initializer_list<Entry> init_list, IAllocator
         insert(entry);
 }
 
-// Definición del constructor de copia
+// DefiniciÃ³n del constructor de copia
 template <typename Key, typename Value, byte_size Order>
 bmap<Key, Value, Order>::bmap(const bmap& rhs)
     : bmap(rhs.m_core.allocator())
@@ -226,7 +248,7 @@ bmap<Key, Value, Order>::bmap(const bmap& rhs)
         insert(entry);
 }
 
-// Definición del operador de copia
+// DefiniciÃ³n del operador de copia
 template <typename Key, typename Value, byte_size Order>
 bmap<Key, Value, Order>& bmap<Key, Value, Order>::operator=(const bmap& rhs)
 {
@@ -241,7 +263,7 @@ bmap<Key, Value, Order>& bmap<Key, Value, Order>::operator=(const bmap& rhs)
 }
 
 // ------------------------------------------------------------
-// Inicialización y limpieza
+// InicializaciÃ³n y limpieza
 // ------------------------------------------------------------
 
 template <typename Key, typename Value, byte_size Order>
@@ -257,7 +279,7 @@ void bmap<Key, Value, Order>::clear()
 }
 
 // ------------------------------------------------------------
-// Inserción pública
+// InserciÃ³n pÃºblica
 // ------------------------------------------------------------
 template <typename Key, typename Value, byte_size Order>
 typename bmap<Key, Value, Order>::InsertResult
@@ -309,7 +331,7 @@ bmap<Key, Value, Order>::insert_or_assign(const Key& key, M&& obj)
 }
 
 // ------------------------------------------------------------
-// Búsqueda
+// BÃºsqueda
 // ------------------------------------------------------------
 template <typename Key, typename Value, byte_size Order>
 typename bmap<Key, Value, Order>::Handle bmap<Key, Value, Order>::find(const Key& key) const
@@ -321,7 +343,7 @@ typename bmap<Key, Value, Order>::Handle bmap<Key, Value, Order>::find(const Key
 // Operator []
 // ------------------------------------------------------------
 
-// Definición operator[]
+// DefiniciÃ³n operator[]
 template <typename Key, typename Value, byte_size Order>
 Value& bmap<Key, Value, Order>::operator[](const Key& key)
 {
@@ -333,7 +355,7 @@ Value& bmap<Key, Value, Order>::operator[](const Key& key)
         return *reinterpret_cast<Value*>(valueBuffer);
 }
 
-// Devuelve referencia const a Value existente, o lanza si no está.
+// Devuelve referencia const a Value existente, o lanza si no estÃ¡.
 template <typename Key, typename Value, byte_size Order>
 const Value& bmap<Key, Value, Order>::at(const Key& key) const
 {
@@ -346,7 +368,7 @@ const Value& bmap<Key, Value, Order>::at(const Key& key) const
 }
 
 // ------------------------------------------------------------
-// Comparación
+// ComparaciÃ³n
 // ------------------------------------------------------------
 template <typename Key, typename Value, byte_size Order>
 std::strong_ordering operator<=>(const bmap<Key, Value, Order>& lhs, const bmap<Key, Value, Order>& rhs)

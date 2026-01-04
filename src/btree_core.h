@@ -1,3 +1,25 @@
+/*
+ * Copyright (c) 2026 Guillermo Hernan Martin
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+ 
 #pragma once
 
 #include "allocator2.h"
@@ -11,7 +33,7 @@ struct BTreeCoreParams
 {
     byte_size Order = 4;
     byte_size ValueSize = 0;
-    byte_size ValueAlign = 1; // Valor mínimo por defecto
+    byte_size ValueAlign = 1; // Valor mÃ­nimo por defecto
     void (*DestroyValueFn)(void*) = nullptr;
     void (*MoveValueFn)(void* dest, void* src) = nullptr;
 };
@@ -626,7 +648,7 @@ BTreeCore<Key, Params>::BTreeCore(IAllocator& alloc)
 {
 }
 
-// Definición del constructor de movimiento
+// DefiniciÃ³n del constructor de movimiento
 template <typename Key, BTreeCoreParams Params>
 BTreeCore<Key, Params>::BTreeCore(BTreeCore&& rhs) noexcept
     : m_root(rhs.m_root)
@@ -639,7 +661,7 @@ BTreeCore<Key, Params>::BTreeCore(BTreeCore&& rhs) noexcept
     rhs.m_size = 0;
 }
 
-// Definición del operador de movimiento
+// DefiniciÃ³n del operador de movimiento
 template <typename Key, BTreeCoreParams Params>
 BTreeCore<Key, Params>& BTreeCore<Key, Params>::operator=(BTreeCore&& rhs) noexcept
 {
@@ -656,7 +678,7 @@ BTreeCore<Key, Params>& BTreeCore<Key, Params>::operator=(BTreeCore&& rhs) noexc
 }
 
 // ------------------------------------------------------------
-// Gestión de memoria
+// GestiÃ³n de memoria
 // ------------------------------------------------------------
 template <typename Key, BTreeCoreParams Params>
 template <typename T>
@@ -683,7 +705,7 @@ void BTreeCore<Key, Params>::createInitialRootIfNeeded()
 }
 
 // ------------------------------------------------------------
-// Inicialización y limpieza
+// InicializaciÃ³n y limpieza
 // ------------------------------------------------------------
 
 template <typename Key, BTreeCoreParams Params>
@@ -728,7 +750,7 @@ void BTreeCore<Key, Params>::delete_subtree(Node* node, unsigned level)
 }
 
 // ------------------------------------------------------------
-// División de nodos
+// DivisiÃ³n de nodos
 // ------------------------------------------------------------
 template <typename Key, BTreeCoreParams Params>
 typename BTreeCore<Key, Params>::NodeLeaf* BTreeCore<Key, Params>::split_leaf(NodeLeaf* leaf)
@@ -745,7 +767,7 @@ BTreeCore<Key, Params>::split_internal(NodeInternal* node)
 }
 
 // ------------------------------------------------------------
-// Inserción
+// InserciÃ³n
 // ------------------------------------------------------------
 template <typename Key, BTreeCoreParams Params>
 typename BTreeCore<Key, Params>::InsertResultInternal
@@ -808,7 +830,7 @@ BTreeCore<Key, Params>::insert_recursive(Node* node, const Key& key, unsigned le
 }
 
 // ------------------------------------------------------------
-// Inserción pública
+// InserciÃ³n pÃºblica
 // ------------------------------------------------------------
 template <typename Key, BTreeCoreParams Params>
 typename BTreeCore<Key, Params>::InsertResult BTreeCore<Key, Params>::insert(const Key& key)
@@ -834,7 +856,7 @@ typename BTreeCore<Key, Params>::InsertResult BTreeCore<Key, Params>::insert(con
 }
 
 // ------------------------------------------------------------
-// Búsqueda
+// BÃºsqueda
 // ------------------------------------------------------------
 template <typename Key, BTreeCoreParams Params>
 typename BTreeCore<Key, Params>::Handle BTreeCore<Key, Params>::lower_bound(const Key& key) const
@@ -925,8 +947,8 @@ typename BTreeCore<Key, Params>::NodeLeaf* BTreeCore<Key, Params>::rightmost_lea
     void* node = m_root;
     unsigned level = 0;
 
-    // Bajamos en el árbol desde la raíz hasta la hoja nivel a nivel
-    // siempre tomando el último hijo de cada nodo interno (indice count)
+    // Bajamos en el Ã¡rbol desde la raÃ­z hasta la hoja nivel a nivel
+    // siempre tomando el Ãºltimo hijo de cada nodo interno (indice count)
     while (level < m_height - 1)
     {
         NodeInternal* internal = static_cast<NodeInternal*>(node);
@@ -938,7 +960,7 @@ typename BTreeCore<Key, Params>::NodeLeaf* BTreeCore<Key, Params>::rightmost_lea
 }
 
 // ------------------------------------------------------------
-// Iteración
+// IteraciÃ³n
 // ------------------------------------------------------------
 template <typename Key, BTreeCoreParams Params>
 typename BTreeCore<Key, Params>::Range BTreeCore<Key, Params>::begin() const
@@ -959,7 +981,7 @@ typename BTreeCore<Key, Params>::InvRange BTreeCore<Key, Params>::rbegin() const
 }
 
 // ------------------------------------------------------------
-// Borrado con redistribución y fusión
+// Borrado con redistribuciÃ³n y fusiÃ³n
 // ------------------------------------------------------------
 
 template <typename Key, BTreeCoreParams Params>
@@ -971,7 +993,7 @@ bool BTreeCore<Key, Params>::erase(const Key& key)
     if (!erase_recursive(m_root, key, 0))
         return false;
 
-    // Si la raíz se quedó sin claves y tiene un solo hijo, lo promovemos.
+    // Si la raÃ­z se quedÃ³ sin claves y tiene un solo hijo, lo promovemos.
     if (m_height > 1)
     {
         NodeInternal* rootInternal = static_cast<NodeInternal*>(m_root);
@@ -999,7 +1021,7 @@ bool BTreeCore<Key, Params>::erase(const Key& key)
 }
 
 // ------------------------------------------------------------
-// Función auxiliar recursiva de borrado
+// FunciÃ³n auxiliar recursiva de borrado
 // ------------------------------------------------------------
 
 template <typename Key, BTreeCoreParams Params>
@@ -1041,7 +1063,7 @@ bool BTreeCore<Key, Params>::erase_from_leaf(NodeLeaf* leaf, const Key& key)
 }
 
 // ------------------------------------------------------------
-// Corrección de underflow (redistribución o fusión)
+// CorrecciÃ³n de underflow (redistribuciÃ³n o fusiÃ³n)
 // ------------------------------------------------------------
 
 template <typename Key, BTreeCoreParams Params>
@@ -1050,7 +1072,7 @@ void BTreeCore<Key, Params>::fix_underflow(NodeInternal* parent, size_type idx, 
     Node* child = parent->children[idx];
     bool isLeaf = (level == m_height - 2);
 
-    // Si el nodo no está por debajo del mínimo, no hacemos nada
+    // Si el nodo no estÃ¡ por debajo del mÃ­nimo, no hacemos nada
     size_type minKeys = (Order + 1) / 2 - 1;
     if (child->count() >= minKeys)
         return;
@@ -1108,7 +1130,7 @@ void BTreeCore<Key, Params>::fix_underflow(NodeInternal* parent, size_type idx, 
 }
 
 // ------------------------------------------------------------
-// Redistribución entre hojas
+// RedistribuciÃ³n entre hojas
 // ------------------------------------------------------------
 
 template <typename Key, BTreeCoreParams Params>
@@ -1129,7 +1151,7 @@ void BTreeCore<Key, Params>::rotate_right_leaf(NodeInternal* parent, size_type p
 }
 
 // ------------------------------------------------------------
-// Redistribución entre nodos internos
+// RedistribuciÃ³n entre nodos internos
 // ------------------------------------------------------------
 
 template <typename Key, BTreeCoreParams Params>
@@ -1163,7 +1185,7 @@ void BTreeCore<Key, Params>::rotate_right_internal(
 }
 
 // ------------------------------------------------------------
-// Fusión de nodos
+// FusiÃ³n de nodos
 // ------------------------------------------------------------
 
 template <typename Key, BTreeCoreParams Params>
