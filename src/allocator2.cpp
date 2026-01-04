@@ -1,4 +1,6 @@
 #include "allocator2.h"
+
+#include "collib_version.h"
 #include "bmap.h"
 #include "darray.h"
 

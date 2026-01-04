@@ -27,6 +27,7 @@
     <ClInclude Include="include\btree_checker.h" />
     <ClInclude Include="include\collib_concepts.h" />
     <ClInclude Include="include\collib_types.h" />
+    <ClInclude Include="include\collib_version.h" />
     <ClInclude Include="include\darray.h" />
     <ClInclude Include="include\span.h" />
     <ClInclude Include="include\vrange.h" />

@@ -13,5 +13,6 @@
     <ClInclude Include="include\vrange.h" />
     <ClInclude Include="include\collib_concepts.h" />
     <ClInclude Include="include\collib_types.h" />
+    <ClInclude Include="include\collib_version.h" />
   </ItemGroup>
 </Project>
