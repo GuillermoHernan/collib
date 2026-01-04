@@ -141,9 +141,9 @@ Build and run tests using the Visual Studio solution (tests included with Catch2
 4. Submit PR with benchmarks
 5. Follow Semantic Versioning for changes
 
-See [CONTRIBUTING.md](CONTRIBUTING.md)
+See [Contributing.md](Contributing.md)
 
 ## License
-MIT License - see [LICENSE](LICENSE) [web:1]
+MIT License - see [LICENSE](LICENSE)
 
 ---
