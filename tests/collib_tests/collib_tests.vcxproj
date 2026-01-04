@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="allocators\arena_allocator_tests.cpp" />
     <ClCompile Include="btree_tests.cpp" />
     <ClCompile Include="collib_tests_main.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>

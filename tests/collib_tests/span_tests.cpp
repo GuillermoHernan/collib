@@ -205,3 +205,15 @@ TEST_CASE("Reversed span tests", "[span][reversed]")
             CHECK(item == array[index++]);
     }
 }
+
+TEST_CASE("contains tests", "[span][contains]")
+{
+    int array[] = {1, 2, 3, 4, 5};
+    span<int> s(array, 5);
+
+    CHECK(s.contains(s.data()));
+    CHECK(s.contains(s.data() + 2));
+    CHECK(!s.contains(s.data() + s.size()));
+    CHECK(!s.contains(s.data() + s.size() + 100));
+    CHECK(!s.contains(s.data() - 1));
+}

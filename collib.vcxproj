@@ -19,10 +19,12 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\allocators\arena_allocator.cpp" />
     <ClCompile Include="src\allocator.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\allocator.h" />
+    <ClInclude Include="include\allocators\arena_allocator.h" />
     <ClInclude Include="include\bmap.h" />
     <ClInclude Include="include\btree_checker.h" />
     <ClInclude Include="include\collib_concepts.h" />

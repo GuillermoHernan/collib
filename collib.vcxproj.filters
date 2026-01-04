@@ -2,6 +2,7 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="src\allocator.cpp" />
+    <ClCompile Include="src\allocators\arena_allocator.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\allocator.h" />
@@ -14,5 +15,6 @@
     <ClInclude Include="include\collib_concepts.h" />
     <ClInclude Include="include\collib_types.h" />
     <ClInclude Include="include\collib_version.h" />
+    <ClInclude Include="include\allocators\arena_allocator.h" />
   </ItemGroup>
 </Project>
