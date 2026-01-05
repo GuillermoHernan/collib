@@ -3,6 +3,7 @@
   <ItemGroup>
     <ClCompile Include="src\allocator.cpp" />
     <ClCompile Include="src\allocators\arena_allocator.cpp" />
+    <ClCompile Include="src\allocators\stack_allocator.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\allocator.h" />
@@ -16,5 +17,6 @@
     <ClInclude Include="include\collib_types.h" />
     <ClInclude Include="include\collib_version.h" />
     <ClInclude Include="include\allocators\arena_allocator.h" />
+    <ClInclude Include="include\allocators\stack_allocator.h" />
   </ItemGroup>
 </Project>

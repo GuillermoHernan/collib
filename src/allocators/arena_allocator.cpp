@@ -21,7 +21,7 @@ ArenaAllocator::ArenaAllocator(byte_size size, IAllocator& fallback)
     if (buffer == nullptr)
         throw std::bad_alloc();
 
-    m_buffer = span<uint8_t>(reinterpret_cast<uint8_t*>(buffer), bufferSize);
+    m_buffer = span<uint8_t>(reinterpret_cast<uint8_t*>(buffer), count_t(bufferSize));
 }
 
 ArenaAllocator::~ArenaAllocator()
