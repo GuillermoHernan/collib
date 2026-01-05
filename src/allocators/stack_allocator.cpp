@@ -53,7 +53,7 @@ struct SBlockHeader
     SBlockHeader* next = nullptr;
     count_t allocCount = 0;
     count_t capacity;
-    count_t bytesUsed = 0;
+    count_t dataBytesUsed = 0;
 
     void* data() const { return (void*)(this + 1); }
 
@@ -61,10 +61,17 @@ struct SBlockHeader
     {
         uint8_t* base = reinterpret_cast<uint8_t*>(data());
 
-        return base + bytesUsed;
+        return base + dataBytesUsed;
     }
 
-    count_t freeBytes() const { return capacity - bytesUsed; }
+    count_t freeBytes() const
+    {
+        // clang-format off
+        return capacity
+            - dataBytesUsed
+            - count_t(allocCount * sizeof(ChunkData));
+        // clang-format on
+    }
 
     count_t maxChunkSize() const
     {
@@ -76,15 +83,9 @@ struct SBlockHeader
             return 0;
     }
 
-    ChunkData* chunksTop()
-    {
-        return chunksEnd() - allocCount;
-    }
+    ChunkData* chunksTop() { return chunksEnd() - allocCount; }
 
-    const ChunkData* chunksTop()const
-    {
-        return chunksEnd() - allocCount;
-    }
+    const ChunkData* chunksTop() const { return chunksEnd() - allocCount; }
 
     ChunkData* chunksEnd()
     {
@@ -92,7 +93,7 @@ struct SBlockHeader
         return reinterpret_cast<ChunkData*>(base + capacity);
     }
 
-    const ChunkData* chunksEnd()const
+    const ChunkData* chunksEnd() const
     {
         uint8_t* base = reinterpret_cast<uint8_t*>(data());
         return reinterpret_cast<ChunkData*>(base + capacity);
@@ -108,8 +109,8 @@ struct SBlockHeader
         --lastChunk;
         ++this->allocCount;
 
-        new (lastChunk) ChunkData(bytesUsed + padding);
-        bytesUsed += bytes + padding;
+        new (lastChunk) ChunkData(dataBytesUsed + padding);
+        dataBytesUsed += bytes + padding;
 
         return SAllocResult {prevFreeSpace + padding, bytes};
     }
@@ -133,8 +134,8 @@ static bool fitsInBlock(const SBlockHeader* block, byte_size correctedSize, alig
 
 static bool tryFree(SBlockHeader& block, uint8_t* buffer)
 {
-    if (block.allocCount == 0)
-        return false;
+    // Shouldn't try to free in empty blocks.
+    assert(block.allocCount > 0);
 
     uint8_t* base = reinterpret_cast<uint8_t*>(block.data());
     uint8_t* blockEnd = base + block.capacity;
@@ -208,11 +209,11 @@ byte_size StackAllocator::tryExpand(byte_size bytes, void* ptr)
         if (available == 0)
             return 0;
 
-        byte_size currentSize = curBlock->bytesUsed - topChunk->offset();
+        byte_size currentSize = curBlock->dataBytesUsed - topChunk->offset();
         byte_size maxChunkSize = available + currentSize;
         const byte_size newSize = std::min(maxChunkSize, std::max(bytes, currentSize));
 
-        curBlock->bytesUsed += count_t(newSize - currentSize);
+        curBlock->dataBytesUsed += count_t(newSize - currentSize);
 
         return newSize;
     }
@@ -249,7 +250,7 @@ void StackAllocator::cleanAfterFree()
             if (topChunk->used())
                 break;
 
-            m_firstBlock->bytesUsed = topChunk->offset();
+            m_firstBlock->dataBytesUsed = topChunk->offset();
             --m_firstBlock->allocCount;
         }
 
@@ -285,7 +286,7 @@ void StackAllocator::pushNewBlock(byte_size allocSize, align a)
     // Fill header
     newBlock->next = m_firstBlock;
     newBlock->capacity = count_t(allocatedSize - sizeof(SBlockHeader));
-    newBlock->bytesUsed = 0;
+    newBlock->dataBytesUsed = 0;
     newBlock->allocCount = 0;
 
     m_firstBlock = newBlock;
@@ -300,14 +301,11 @@ static bool validateBlock(const SBlockHeader& block)
     if (block.capacity == 0)
         return false;
 
-    if (block.bytesUsed > block.capacity)
+    if (block.dataBytesUsed > block.capacity)
         return false;
 
     const count_t maxChunkCount = block.capacity / sizeof(ChunkData);
     if (block.allocCount > maxChunkCount)
-        return false;
-
-    if (block.allocCount > 0 && block.bytesUsed == 0)
         return false;
 
     return true;
@@ -323,7 +321,7 @@ static bool validateChunk(const SBlockHeader& block, const ChunkData* chunk)
         return false;
 
     // Offset must be within used area.
-    if (offset >= block.bytesUsed)
+    if (offset > block.dataBytesUsed)
         return false;
 
     // The offset is greater or equal than next chunk offset. Zero size chunks are allowed.
@@ -382,7 +380,7 @@ void StackAllocator::dumpToCsv(std::ostream& csv, char separator) const
     {
         uint8_t* base = reinterpret_cast<uint8_t*>(block->data());
         ChunkData* chunksEnd = block->chunksEnd();
-        count_t chunkEndOffset = block->bytesUsed;
+        count_t chunkEndOffset = block->dataBytesUsed;
 
         for (ChunkData* chunk = block->chunksTop(); chunk < chunksEnd; ++chunk)
         {
@@ -412,7 +410,7 @@ bool StackAllocator::validate() const
     if (m_firstBlock == nullptr)
     {
         return m_stats.allocCount == 0 && m_stats.blockCount == 0 && m_stats.totalMemory == 0;
-    }       
+    }
 
     for (const SBlockHeader* block = m_firstBlock; block != nullptr; block = block->next)
     {
