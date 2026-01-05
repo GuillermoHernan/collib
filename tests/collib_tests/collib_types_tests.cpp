@@ -128,21 +128,21 @@ TEST_CASE("align_mask", "[align][mask]")
     CHECK(a6.mask() == ~byte_size(0x7));
 }
 
-TEST_CASE("align_fix_size", "[align][fix_size]")
+TEST_CASE("align_fix_size", "[align][round_up]")
 {
     align a4 = align::from_bytes(4);
 
-    CHECK(a4.fix_size(0) == 0);
-    CHECK(a4.fix_size(1) == 4);
-    CHECK(a4.fix_size(3) == 4);
-    CHECK(a4.fix_size(4) == 4);
-    CHECK(a4.fix_size(5) == 8);
-    CHECK(a4.fix_size(7) == 8);
-    CHECK(a4.fix_size(8) == 8);
+    CHECK(a4.round_up(0) == 0);
+    CHECK(a4.round_up(1) == 4);
+    CHECK(a4.round_up(3) == 4);
+    CHECK(a4.round_up(4) == 4);
+    CHECK(a4.round_up(5) == 8);
+    CHECK(a4.round_up(7) == 8);
+    CHECK(a4.round_up(8) == 8);
 
-    CHECK(align::from_bytes(1).fix_size(0) == 0);
-    CHECK(align::from_bytes(16).fix_size(15) == 16);
-    CHECK(align::from_bytes(16).fix_size(17) == 32);
+    CHECK(align::from_bytes(1).round_up(0) == 0);
+    CHECK(align::from_bytes(16).round_up(15) == 16);
+    CHECK(align::from_bytes(16).round_up(17) == 32);
 }
 
 TEST_CASE("align_padding", "[align][padding]")

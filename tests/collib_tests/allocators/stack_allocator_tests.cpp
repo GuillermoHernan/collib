@@ -47,7 +47,7 @@ public:
         if (shouldFail)
             return {nullptr, 0};
 
-        const byte_size correctedSize = a.fix_size(bytes);
+        const byte_size correctedSize = a.round_up(bytes);
         void* ptr = std::malloc(correctedSize);
         allocatedBlocks.push_back(ptr);
 
@@ -193,8 +193,10 @@ TEST_CASE("StackAllocator alignment", "[StackAllocator][alignment]")
 
     SECTION("Alignment creates new block when needed")
     {
-        allocator.alloc(1, align::from_bytes(64));
-        allocator.alloc(1, align::from_bytes(128)); // Needs new block due to alignment
+        StackAllocator allocator(backing, {128, 128});
+
+        allocator.alloc(96, align::from_bytes(8));
+        allocator.alloc(16, align::from_bytes(32)); // Needs new block due to alignment
 
         auto stats = allocator.stats();
         REQUIRE(stats.blockCount == 2);
@@ -323,7 +325,7 @@ TEST_CASE("StackAllocator tryExpand", "[StackAllocator][tryExpand]")
     SECTION("Never shrinks + limits")
     {
         auto r = allocator.alloc(48, align::system());
-        REQUIRE(allocator.tryExpand(16, r.buffer) == 48); // Never shrinks
+        REQUIRE(allocator.tryExpand(16, r.buffer) == 0); // Never shrinks
         REQUIRE(allocator.tryExpand(1000, r.buffer) > 48); // Block limited
 
         REQUIRE(checkAllocator(allocator));
@@ -379,6 +381,47 @@ TEST_CASE("StackAllocator edge cases", "[StackAllocator][edge]")
         REQUIRE_THROWS_AS(allocator.free(ptr), std::runtime_error);
 
         REQUIRE(checkAllocator(allocator));
+    }
+}
+
+TEST_CASE("StackAllocator limits", "[StackAllocator][limits]")
+{
+    MockBackingAllocator backing;
+    StackAllocator allocator(backing);
+
+    SECTION("Block sizes")
+    {
+        StackAllocator::Parameters params {4, 0xFFFF'FFFF};
+        StackAllocator allocator(backing, params);
+
+        params = allocator.params();
+        CHECK(params.minBlockSize == StackAllocator::Limits::minBlockSize);
+        CHECK(params.maxBlockSize == StackAllocator::Limits::maxBlockSize);
+    }
+
+    SECTION("Minimum alignment")
+    {
+        const int repetitions = 16;
+        const align minAlign = StackAllocator::Limits::minAlign;
+
+        for (int i = 0; i < repetitions; ++i)
+        {
+            auto [buffer, size] = allocator.alloc(1, align::from_bytes(1));
+            REQUIRE(minAlign.isAligned(buffer));
+            REQUIRE(minAlign.isAligned(size));
+        }
+    }
+
+    SECTION("Maximum alignment")
+    {
+        auto r = allocator.alloc(0x4000, align::from_bytes(0x4000));
+        CHECK(r.buffer == nullptr);
+    }
+
+    SECTION("Maximum allocation size")
+    {
+        auto r = allocator.alloc(0xFFFF'FFFF, align::system());
+        CHECK(r.buffer == nullptr);
     }
 }
 

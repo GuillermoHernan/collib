@@ -39,7 +39,7 @@ public:
         if (shouldFail)
             return {nullptr, 0};
 
-        const byte_size correctedSize = a.fix_size(bytes);
+        const byte_size correctedSize = a.round_up(bytes);
         void* ptr = std::malloc(correctedSize);
         allocatedBlocks.push_back(ptr);
         return {ptr, correctedSize};

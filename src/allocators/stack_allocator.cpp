@@ -29,20 +29,31 @@
 namespace coll
 {
 
+// ChunkData stores:
+//  - offset: 28 bits
+//  - aligment: 3 bits
+//  - used flag: 1 bit.
 class ChunkData
 {
 public:
     // Marks the chunk as used, initially.
-    ChunkData(uint32_t offset)
-        : m_data((offset << 1) | 1)
+    ChunkData(uint32_t offset, align a)
+        : m_data((offset << 4) | 1)
     {
+        const uint32_t alignValue = a.log2Size() - StackAllocator::Limits::minAlign.log2Size();
+        m_data |= alignValue << 1;
     }
 
-    uint32_t offset() const { return m_data >> 1; }
+    uint32_t offset() const { return m_data >> 4; }
     bool used() const { return (m_data & 1) != 0; }
+    align align()
+    {
+        const uint32_t alignValue = ((m_data >> 1) & 0x7) + StackAllocator::Limits::minAlign.log2Size();
+        return align::from_log2(alignValue);
+    }
 
     void free() { m_data &= ~1; }
-    void add(uint32_t offset) { m_data += (offset << 1); }
+    void add(uint32_t offset) { m_data += (offset << 4); }
 
 private:
     uint32_t m_data;
@@ -109,7 +120,7 @@ struct SBlockHeader
         --lastChunk;
         ++this->allocCount;
 
-        new (lastChunk) ChunkData(dataBytesUsed + padding);
+        new (lastChunk) ChunkData(dataBytesUsed + padding, a);
         dataBytesUsed += bytes + padding;
 
         return SAllocResult {prevFreeSpace + padding, bytes};
@@ -165,6 +176,9 @@ StackAllocator::StackAllocator(IAllocator& backing, const Parameters& params)
     : m_backing(backing)
     , m_params(params)
 {
+
+    m_params.minBlockSize = std::max(params.minBlockSize, Limits::minBlockSize);
+    m_params.maxBlockSize = std::min(params.maxBlockSize, Limits::maxBlockSize);
 }
 
 StackAllocator::~StackAllocator()
@@ -179,7 +193,14 @@ StackAllocator::~StackAllocator()
 
 SAllocResult StackAllocator::alloc(byte_size bytes, align a)
 {
-    const byte_size correctedSize = a.fix_size(bytes);
+    if (a > Limits::maxAlign)
+        return {nullptr, 0};
+
+    if (bytes > Limits::maxAllocSize)
+        return {nullptr, 0};
+
+    a = std::max(a, Limits::minAlign);
+    const byte_size correctedSize = a.round_up(bytes);
 
     if (!fitsInBlock(m_firstBlock, correctedSize, a))
         pushNewBlock(correctedSize, a);
@@ -206,16 +227,19 @@ byte_size StackAllocator::tryExpand(byte_size bytes, void* ptr)
             return 0;
 
         const byte_size available = curBlock->freeBytes();
-        if (available == 0)
-            return 0;
-
+        const align a = topChunk->align();
         byte_size currentSize = curBlock->dataBytesUsed - topChunk->offset();
         byte_size maxChunkSize = available + currentSize;
+        maxChunkSize = a.round_down(maxChunkSize);
         const byte_size newSize = std::min(maxChunkSize, std::max(bytes, currentSize));
 
-        curBlock->dataBytesUsed += count_t(newSize - currentSize);
-
-        return newSize;
+        if (newSize > currentSize)
+        {
+            curBlock->dataBytesUsed += count_t(newSize - currentSize);
+            return newSize;
+        }
+        else
+            return 0;
     }
 
     return 0;
@@ -271,8 +295,8 @@ void StackAllocator::cleanAfterFree()
 void StackAllocator::pushNewBlock(byte_size allocSize, align a)
 {
     // Update allocSize to take Block overhead into account.
-    allocSize += a.fix_size(sizeof(SBlockHeader));
-    allocSize += a.fix_size(sizeof(ChunkData));
+    allocSize += a.round_up(sizeof(SBlockHeader));
+    allocSize += a.round_up(sizeof(ChunkData));
 
     // Calculate new size. Note that a big alloc size can create a block bigger than 'maxBlockSize'
     byte_size blockSize = std::max(byte_size(m_params.minBlockSize), m_stats.totalMemory);

@@ -50,6 +50,14 @@ public:
         return a;
     }
 
+    constexpr static align from_log2(uint8_t x)
+    {
+        align a;
+        a.m_logSize = x;
+
+        return a;
+    }
+
     constexpr static align from_bits(byte_size x) { return from_bytes((x + 7) / 8); }
     constexpr static align system() { return from_bytes(sizeof(void*)); }
 
@@ -70,21 +78,36 @@ public:
 
     constexpr auto operator<=>(const align&) const = default;
 
+    constexpr align operator<<(uint8_t offset) const
+    {
+        align result(*this);
+        result.m_logSize += offset;
+        return result;
+    }
+
+    constexpr align operator>>(uint8_t offset) const
+    {
+        align result(*this);
+        result.m_logSize -= offset;
+        return result;
+    }
+
     constexpr byte_size mask() const { return (~byte_size(0)) << m_logSize; }
+    constexpr uint8_t log2Size() const { return m_logSize; }
+
+    bool isAligned(const void* ptr) const { return isAligned(reinterpret_cast<uintptr_t>(ptr)); }
+    bool isAligned(byte_size size) const { return (size & mask()) == size; }
 
     template <class T>
     constexpr byte_size padding(const T* ptr)
     {
         const uintptr_t address = reinterpret_cast<uintptr_t>(ptr);
 
-        return fix_size(address) - address;
+        return round_up(address) - address;
     }
 
-    constexpr byte_size fix_size(byte_size size)
-    {
-        const byte_size m = mask();
-        return (size + (~m)) & m;
-    }
+    constexpr byte_size round_down(byte_size size) const { return size & mask(); }
+    constexpr byte_size round_up(byte_size size) const { return round_down(size + (~mask())); }
 
 private:
     uint8_t m_logSize = 0;

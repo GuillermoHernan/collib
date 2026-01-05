@@ -43,6 +43,15 @@ public:
         count_t blockCount = 0;
     };
 
+    struct Limits
+    {
+        constexpr static count_t maxAllocSize = 0x8000'0000;
+        constexpr static count_t maxBlockSize = 0x0800'0000;
+        constexpr static count_t minBlockSize = 0x20;
+        constexpr static align minAlign = align::system();
+        constexpr static align maxAlign = align::system() << 7;
+    };
+
     StackAllocator(IAllocator& backing, const Parameters& params = Parameters());
     ~StackAllocator();
 

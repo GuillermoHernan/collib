@@ -33,7 +33,7 @@ ArenaAllocator::~ArenaAllocator()
 SAllocResult ArenaAllocator::alloc(byte_size bytes, align a)
 {
     const byte_size padding = a.padding(m_buffer.data() + m_usedBytes);
-    const byte_size correctedSize = a.fix_size(bytes);
+    const byte_size correctedSize = a.round_up(bytes);
     const byte_size totalSize = padding + correctedSize;
     const byte_size remaining = m_buffer.size() - m_usedBytes;
 
