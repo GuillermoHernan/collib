@@ -176,8 +176,8 @@ StackAllocator::StackAllocator(IAllocator& backing, const Parameters& params)
     : m_backing(backing)
     , m_params(params)
 {
-
     m_params.minBlockSize = std::max(params.minBlockSize, Limits::minBlockSize);
+    m_params.maxBlockSize = std::max(params.minBlockSize, params.maxBlockSize);
     m_params.maxBlockSize = std::min(params.maxBlockSize, Limits::maxBlockSize);
 }
 
