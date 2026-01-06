@@ -97,96 +97,149 @@ inline auto get_value(const Entry& e) -> decltype(e.value)
 }
 
 template <typename MapType>
-void run_insertion(size_t n)
+class InsertionTest
 {
-    using Key = MapType::key_type;
-    using Value = MapType::mapped_type;
+public:
+    void setup(size_t) { }
+    void pre_run(size_t) { }
 
-    MapType m;
-    for (size_t i = 0; i < n; ++i)
-        map_insert(m, static_cast<Key>(i), static_cast<Value>(i));
-}
-
-template <typename MapType>
-void run_insertion_random(size_t n)
-{
-    using Key = MapType::key_type;
-    using Value = MapType::mapped_type;
-
-    std::mt19937_64 rng(12345);
-    std::uniform_int_distribution<Key> dist(0, static_cast<Key>(n * 10));
-    std::vector<Key> keys(n);
-    for (size_t i = 0; i < n; ++i)
-        keys[i] = dist(rng);
-
-    MapType m;
-    for (size_t i = 0; i < n; ++i)
-        map_insert(m, keys[i], static_cast<Value>(i));
-}
-
-template <typename MapType>
-void run_find(size_t n)
-{
-    using Key = MapType::key_type;
-    using Value = MapType::mapped_type;
-
-    MapType m;
-    for (size_t i = 0; i < n; ++i)
-        map_insert(m, static_cast<Key>(i), static_cast<Key>(i));
-
-    std::mt19937_64 rng(12345);
-    std::uniform_int_distribution<Key> dist(0, static_cast<Key>(n - 1));
-    size_t found = 0;
-
-    for (size_t i = 0; i < n; ++i)
+    void run(size_t n)
     {
-        Key key = dist(rng);
-        if (map_find(m, key))
+        using Key = MapType::key_type;
+        using Value = MapType::mapped_type;
+
+        MapType m;
+        for (size_t i = 0; i < n; ++i)
+            map_insert(m, static_cast<Key>(i), static_cast<Value>(i));
+    }
+};
+
+template <typename MapType>
+class RandomInsertionTest
+{
+public:
+    using Key = MapType::key_type;
+    using Value = MapType::mapped_type;
+
+    void setup(size_t n)
+    {
+        std::mt19937_64 rng(12345);
+        std::uniform_int_distribution<Key> dist(0, static_cast<Key>(n * 10));
+
+        for (size_t i = 0; i < n; ++i)
+            keys.push_back(dist(rng));
+    }
+
+    void pre_run(size_t) { }
+
+    void run(size_t)
+    {
+        MapType m;
+        for (const auto& key : keys)
+            map_insert(m, key, key);
+    }
+
+private:
+    std::vector<Key> keys;
+};
+
+template <typename MapType>
+class FindTest
+{
+public:
+    using Key = MapType::key_type;
+    using Value = MapType::mapped_type;
+
+    void setup(size_t n)
+    {
+        for (size_t i = 0; i < n; ++i)
+            map_insert(m_map, static_cast<Key>(i), static_cast<Key>(i));
+
+        m_rng = std::mt19937_64(12345);
+        m_dist = std::uniform_int_distribution<Key>(0, static_cast<Key>(n - 1));
+    }
+
+    void pre_run(size_t) { }
+
+    void run(size_t n)
+    {
+        size_t found = 0;
+
+        for (size_t i = 0; i < n; ++i)
         {
-            ++found;
+            Key key = m_dist(m_rng);
+            if (map_find(m_map, key))
+                ++found;
+        }
+
+        // Usar volatile found para evitar optimizaciones agresivas, aunque no requerido aquí
+        volatile auto dummy = found;
+    }
+
+private:
+    MapType m_map;
+    std::mt19937_64 m_rng;
+    std::uniform_int_distribution<Key> m_dist;
+};
+
+template <typename MapType>
+class EraseTest
+{
+public:
+    using Key = MapType::key_type;
+    using Value = MapType::mapped_type;
+
+    void setup(size_t n)
+    {
+        for (size_t i = 0; i < n; ++i)
+            map_insert(m_initialMap, static_cast<Key>(i), static_cast<Key>(i));
+    }
+
+    void pre_run(size_t) 
+    { 
+        m_map = m_initialMap;
+    }
+
+    void run(size_t n)
+    {
+        size_t erased = 0;
+        for (size_t i = 0; i < n; ++i)
+        {
+            if (map_erase(m_map, static_cast<Key>(i)))
+                ++erased;
         }
     }
-    auto end = std::chrono::high_resolution_clock::now();
 
-    // Usar volatile found para evitar optimizaciones agresivas, aunque no requerido aquí
-    volatile auto dummy = found;
-}
+private:
+    MapType m_initialMap;
+    MapType m_map;
+};
 
 template <typename MapType>
-void run_erase(size_t n)
+class SeqReadTest
 {
+public:
     using Key = MapType::key_type;
     using Value = MapType::mapped_type;
 
-    MapType m;
-    for (size_t i = 0; i < n; ++i)
-        map_insert(m, static_cast<Key>(i), static_cast<Key>(i));
-
-    size_t erased = 0;
-    for (size_t i = 0; i < n; ++i)
+    void setup(size_t n)
     {
-        if (map_erase(m, static_cast<Key>(i)))
-            ++erased;
-    }
-}
-
-template <typename MapType>
-void run_seq_read(size_t n)
-{
-    MapType m;
-    for (size_t i = 0; i < n; ++i)
-    {
-        map_insert(
-            m,
-            static_cast<typename MapType::key_type>(i),
-            static_cast<typename MapType::mapped_type>(i)
-        );
+        for (size_t i = 0; i < n; ++i)
+            map_insert(m_map, static_cast<Key>(i), static_cast<Value>(i));
     }
 
-    volatile typename MapType::mapped_type sink {};
-    for (const auto& kv : m)
-        sink = get_value(kv);
-}
+    void pre_run(size_t) { }
+
+    void run(size_t n)
+    {
+        volatile Value sink;
+        for (const auto& kv : m_map)
+            sink = get_value(kv);
+    }
+
+private:
+    MapType m_map;
+};
 
 size_t calc_repetitions(size_t size)
 {
@@ -212,32 +265,39 @@ size_t calc_repetitions(size_t size)
     return iReps;
 }
 
-template <typename BenchmarkFn>
-BenchmarkResult run_benchmark(BenchmarkFn func, BenchmarkResult params, const std::string& operation)
+template <typename BenchmarkType>
+BenchmarkResult run_benchmark(BenchmarkResult params, const std::string& operation)
 {
     const size_t size = params.map_size;
     const size_t nReps = calc_repetitions(size);
     std::vector<double> measurements;
     measurements.reserve(nReps);
+    BenchmarkType test;
 
     params.operation = operation;
 
+    // Setup (just once)
+    test.setup(size);
+
     // Warmup
-    func(size);
+    test.pre_run(size);
+    test.run(size);
 
     for (size_t i = 0; i < nReps; ++i)
     {
+        test.pre_run(size);
+
         auto start = std::chrono::high_resolution_clock::now();
-        func(size);
+        test.run(size);
         auto end = std::chrono::high_resolution_clock::now();
         measurements.push_back(std::chrono::duration<double, std::milli>(end - start).count());
     }
 
     // Get the median
-    //std::sort(measurements.begin(), measurements.end());
-    //params.duration_ms = measurements[nReps / 2];
+    // std::sort(measurements.begin(), measurements.end());
+    // params.duration_ms = measurements[nReps / 2];
 
-    //Get the average
+    // Get the average
     double acc = 0;
     for (double v : measurements)
         acc += v;
@@ -261,11 +321,11 @@ run_all_benchmarks_for_size(size_t n, const std::vector<std::string>& map_names,
         params.map_name = name;
         params.map_size = n;
 
-        results.push_back(run_benchmark(run_insertion<MapT>, params, "insertion"));
-        results.push_back(run_benchmark(run_insertion_random<MapT>, params, "insertion_random"));
-        results.push_back(run_benchmark(run_find<MapT>, params, "find"));
-        results.push_back(run_benchmark(run_erase<MapT>, params, "erase"));
-        results.push_back(run_benchmark(run_seq_read<MapT>, params, "sequential_read"));
+        results.push_back(run_benchmark<InsertionTest<MapT>>(params, "insertion"));
+        results.push_back(run_benchmark<RandomInsertionTest<MapT>>(params, "insertion_random"));
+        results.push_back(run_benchmark<FindTest<MapT>>(params, "find"));
+        results.push_back(run_benchmark<EraseTest<MapT>>(params, "erase"));
+        results.push_back(run_benchmark<SeqReadTest<MapT>>(params, "sequential_read"));
     };
 
     size_t idx = 0;
