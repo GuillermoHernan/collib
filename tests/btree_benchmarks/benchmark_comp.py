@@ -50,24 +50,23 @@ def get_unique_configs(data1, data2):
     return sorted(all_keys, key=lambda x: (x[0], x[1], x[2]))
 
 def get_colored_diff(diff, time_baseline):
-    """Colorea según diferencia RELATIVA. <2% = neutro"""
+    """Porcentaje alineado perfectamente (14 chars fijos)"""
     if time_baseline == 0:
-        if abs(diff) < 1e-6:
-            return f"{diff:>14.4f}"
-        elif diff < 0:
-            return f"\033[32m{diff:>14.4f}\033[0m"
-        else:
-            return f"\033[31m{diff:>14.4f}\033[0m"
+        rel_pct = 0.0
+    else:
+        rel_pct = (diff / time_baseline) * 100
     
-    # Diferencia RELATIVA en porcentaje
-    rel_diff_pct = (diff / time_baseline) * 100
+    # Formatear SIEMPRE a 14 caracteres primero
+    pct_str = f"{rel_pct:>10.1f}%"
     
-    if abs(rel_diff_pct) < 2.0:  # < 2%
-        return f"{diff:>14.4f}"
-    elif diff < 0:  # Verde (mejora >2%)
-        return f"\033[32m{diff:>14.4f}\033[0m"
-    else:  # Rojo (empeora >2%)
-        return f"\033[31m{diff:>14.4f}\033[0m"
+    if abs(rel_pct) < 2.0:  # Neutro <2%
+        return f"{pct_str:>14}"
+    elif rel_pct < 0:  # Verde
+        return f"\033[32m{pct_str:>14}\033[0m"
+    else:  # Rojo
+        return f"\033[31m{pct_str:>14}\033[0m"
+
+
         
 def print_results_table(diffs, data1, operations, configs, sizes):
     """Imprime tabla con colores usando print individual por celda"""
