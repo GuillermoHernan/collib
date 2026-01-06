@@ -31,12 +31,20 @@
 
 using namespace coll;
 
+struct TestConfig
+{
+    std::string map_name;
+    std::string operation;
+    size_t map_size;
+    size_t op_count;
+
+    auto operator<=>(const TestConfig&) const = default;
+};
+
 // Estructura para almacenar resultados
 struct BenchmarkResult
 {
-    std::string map_name;
-    size_t map_size;
-    std::string operation;
+    TestConfig config;
     double duration_ms;
 };
 
@@ -96,76 +104,108 @@ inline auto get_value(const Entry& e) -> decltype(e.value)
     return e.value;
 }
 
-template <typename MapType>
-class InsertionTest
+class TestBase
 {
 public:
-    void setup(size_t) { }
-    void pre_run(size_t) { }
+    void setup(const TestConfig& config) { m_config = config; }
+    void pre_run() { }
 
-    void run(size_t n)
-    {
-        using Key = MapType::key_type;
-        using Value = MapType::mapped_type;
-
-        MapType m;
-        for (size_t i = 0; i < n; ++i)
-            map_insert(m, static_cast<Key>(i), static_cast<Value>(i));
-    }
+protected:
+    TestConfig m_config;
 };
 
 template <typename MapType>
-class RandomInsertionTest
+class InsertionTest : public TestBase
+{
+public:
+    void pre_run()
+    {
+        m_reps = m_config.op_count / m_config.map_size;
+        m_reps = std::max(size_t(1), m_reps);
+    }
+
+    void run()
+    {
+        using Key = MapType::key_type;
+        using Value = MapType::mapped_type;
+        const size_t n = m_config.map_size;
+
+        MapType m;
+        for (size_t j = 0; j < m_reps; ++j)
+        {
+            for (size_t i = 0; i < n; ++i)
+                map_insert(m, static_cast<Key>(i), static_cast<Value>(i));
+
+            m.clear();
+        }
+    }
+
+private:
+    size_t m_reps = 1;
+};
+
+template <typename MapType>
+class RandomInsertionTest : public TestBase
 {
 public:
     using Key = MapType::key_type;
     using Value = MapType::mapped_type;
 
-    void setup(size_t n)
+    void setup(const TestConfig& config)
     {
+        TestBase::setup(config);
+
+        const size_t n = config.map_size;
         std::mt19937_64 rng(12345);
         std::uniform_int_distribution<Key> dist(0, static_cast<Key>(n * 10));
 
         for (size_t i = 0; i < n; ++i)
             keys.push_back(dist(rng));
+
+        m_reps = m_config.op_count / m_config.map_size;
+        m_reps = std::max(size_t(1), m_reps);
     }
 
-    void pre_run(size_t) { }
-
-    void run(size_t)
+    void run()
     {
         MapType m;
-        for (const auto& key : keys)
-            map_insert(m, key, key);
+        for (size_t j = 0; j < m_reps; ++j)
+        {
+            for (const auto& key : keys)
+                map_insert(m, key, key);
+
+            m.clear();
+        }
     }
 
 private:
     std::vector<Key> keys;
+    size_t m_reps = 1;
 };
 
 template <typename MapType>
-class FindTest
+class FindTest : public TestBase
 {
 public:
     using Key = MapType::key_type;
     using Value = MapType::mapped_type;
 
-    void setup(size_t n)
+    void setup(const TestConfig& config)
     {
-        for (size_t i = 0; i < n; ++i)
+        TestBase::setup(config);
+
+        for (size_t i = 0; i < config.map_size; ++i)
             map_insert(m_map, static_cast<Key>(i), static_cast<Key>(i));
 
         m_rng = std::mt19937_64(12345);
-        m_dist = std::uniform_int_distribution<Key>(0, static_cast<Key>(n - 1));
+        m_dist = std::uniform_int_distribution<Key>(0, static_cast<Key>(config.map_size - 1));
     }
 
-    void pre_run(size_t) { }
-
-    void run(size_t n)
+    void run()
     {
         size_t found = 0;
 
-        for (size_t i = 0; i < n; ++i)
+        for (size_t i = 0; i < m_config.op_count; ++i)
         {
             Key key = m_dist(m_rng);
             if (map_find(m_map, key))
@@ -183,62 +223,96 @@ private:
 };
 
 template <typename MapType>
-class EraseTest
+class EraseTest : public TestBase
 {
 public:
     using Key = MapType::key_type;
     using Value = MapType::mapped_type;
 
-    void setup(size_t n)
+    void setup(const TestConfig& config)
     {
-        for (size_t i = 0; i < n; ++i)
+        TestBase::setup(config);
+
+        for (size_t i = 0; i < config.map_size; ++i)
             map_insert(m_initialMap, static_cast<Key>(i), static_cast<Key>(i));
+
+        m_rng = std::mt19937_64(12345);
+        m_dist = std::uniform_int_distribution<Key>(0, static_cast<Key>(config.map_size - 1));
     }
 
-    void pre_run(size_t) 
-    { 
-        m_map = m_initialMap;
-    }
-
-    void run(size_t n)
+    void pre_run()
     {
+        // Handles the case in whcih the number operations exceeds map size. Creates enough copies of the
+        // map to make sure it will never run out of stuff to delete.
+        m_maps.clear();
+        size_t map_count = m_config.op_count / m_config.map_size;
+        map_count = std::max(size_t(1), map_count);
+
+        for (; map_count > 0; --map_count)
+            m_maps.push_back(m_initialMap);
+
+        m_mapIndex = 0;
+    }
+
+    void run()
+    {
+        m_mapIndex = 0;
         size_t erased = 0;
-        for (size_t i = 0; i < n; ++i)
+        for (size_t i = 0; i < m_config.op_count; ++i)
         {
-            if (map_erase(m_map, static_cast<Key>(i)))
+            auto& map = m_maps[m_mapIndex];
+            Key key = m_dist(m_rng);
+            if (map_erase(map, key))
+            {
                 ++erased;
+                if (map.empty())
+                    ++m_mapIndex;
+            }
         }
     }
 
 private:
     MapType m_initialMap;
-    MapType m_map;
+    std::vector<MapType> m_maps;
+    std::mt19937_64 m_rng;
+    std::uniform_int_distribution<Key> m_dist;
+    size_t m_mapIndex = 0;
 };
 
 template <typename MapType>
-class SeqReadTest
+class SeqReadTest : public TestBase
 {
 public:
     using Key = MapType::key_type;
     using Value = MapType::mapped_type;
 
-    void setup(size_t n)
+    void setup(const TestConfig& config)
     {
-        for (size_t i = 0; i < n; ++i)
+        TestBase::setup(config);
+
+        for (size_t i = 0; i < config.map_size; ++i)
             map_insert(m_map, static_cast<Key>(i), static_cast<Value>(i));
+
+        m_reps = m_config.op_count / m_config.map_size;
+        m_reps = std::max(size_t(1), m_reps);
+
+        // This test is a bit too fast, so lets increase the repetitions a little
+        m_reps *= 20;
     }
 
-    void pre_run(size_t) { }
-
-    void run(size_t n)
+    void run()
     {
         volatile Value sink;
-        for (const auto& kv : m_map)
-            sink = get_value(kv);
+        for (size_t j = 0; j < m_reps; ++j)
+        {
+            for (const auto& kv : m_map)
+                sink = get_value(kv);
+        }
     }
 
 private:
     MapType m_map;
+    size_t m_reps = 1;
 };
 
 size_t calc_repetitions(size_t size)
@@ -266,32 +340,36 @@ size_t calc_repetitions(size_t size)
 }
 
 template <typename BenchmarkType>
-BenchmarkResult run_benchmark(BenchmarkResult params, const std::string& operation)
+BenchmarkResult run_benchmark(TestConfig config, const std::string& operation)
 {
-    const size_t size = params.map_size;
-    const size_t nReps = calc_repetitions(size);
+    // const size_t size = params.map_size;
+    // const size_t nReps = calc_repetitions(size);
+    const size_t nReps = 7;
     std::vector<double> measurements;
     measurements.reserve(nReps);
     BenchmarkType test;
 
-    params.operation = operation;
+    config.operation = operation;
 
     // Setup (just once)
-    test.setup(size);
+    test.setup(config);
 
     // Warmup
-    test.pre_run(size);
-    test.run(size);
+    test.pre_run();
+    test.run();
 
     for (size_t i = 0; i < nReps; ++i)
     {
-        test.pre_run(size);
+        test.pre_run();
 
         auto start = std::chrono::high_resolution_clock::now();
-        test.run(size);
+        test.run();
         auto end = std::chrono::high_resolution_clock::now();
         measurements.push_back(std::chrono::duration<double, std::milli>(end - start).count());
     }
+
+    BenchmarkResult result;
+    result.config = config;
 
     // Get the median
     // std::sort(measurements.begin(), measurements.end());
@@ -302,36 +380,61 @@ BenchmarkResult run_benchmark(BenchmarkResult params, const std::string& operati
     for (double v : measurements)
         acc += v;
 
-    params.duration_ms = acc / measurements.size();
+    result.duration_ms = acc / measurements.size();
 
-    return params;
+    return result;
 }
 
 // Función variádica para ejecutar todas las pruebas para todos los mapas pasados y acumular resultados
 template <typename... Maps>
-std::vector<BenchmarkResult>
-run_all_benchmarks_for_size(size_t n, const std::vector<std::string>& map_names, Maps&&... maps)
+std::vector<BenchmarkResult> run_all_benchmarks(
+    const TestConfig& base_config,
+    const std::vector<std::string>& map_names,
+    Maps&&... maps
+)
 {
     std::vector<BenchmarkResult> results;
 
     auto run_for_map = [&](auto&& map_type, const std::string& name)
     {
         using MapT = std::decay_t<decltype(map_type)>;
-        BenchmarkResult params;
-        params.map_name = name;
-        params.map_size = n;
+        TestConfig config(base_config);
+        config.map_name = name;
 
-        results.push_back(run_benchmark<InsertionTest<MapT>>(params, "insertion"));
-        results.push_back(run_benchmark<RandomInsertionTest<MapT>>(params, "insertion_random"));
-        results.push_back(run_benchmark<FindTest<MapT>>(params, "find"));
-        results.push_back(run_benchmark<EraseTest<MapT>>(params, "erase"));
-        results.push_back(run_benchmark<SeqReadTest<MapT>>(params, "sequential_read"));
+        results.push_back(run_benchmark<InsertionTest<MapT>>(config, "insertion"));
+        results.push_back(run_benchmark<RandomInsertionTest<MapT>>(config, "insertion_random"));
+        results.push_back(run_benchmark<FindTest<MapT>>(config, "find"));
+        results.push_back(run_benchmark<EraseTest<MapT>>(config, "erase"));
+        results.push_back(run_benchmark<SeqReadTest<MapT>>(config, "sequential_read"));
     };
 
     size_t idx = 0;
     (run_for_map(std::forward<Maps>(maps), map_names[idx++]), ...);
 
     return results;
+}
+
+const BenchmarkResult* find_result(
+    const std::vector<BenchmarkResult>& results,
+    const std::string& map_name,
+    const std::string& operation,
+    size_t map_size
+)
+{
+    auto it = std::find_if(
+        results.begin(),
+        results.end(),
+        [&](const BenchmarkResult& r)
+        {
+            const auto& c = r.config;
+            return c.map_name == map_name && c.operation == operation && c.map_size == map_size;
+        }
+    );
+
+    if (it != results.end())
+        return &(*it);
+    else
+        return nullptr;
 }
 
 // Imprime tablas con filas para cada mapa y columnas para cada tamaño, filtrando por operación
@@ -355,19 +458,10 @@ void print_results_table(
         output << std::setw(25) << std::setprecision(4) << map_name;
         for (auto size : map_sizes)
         {
-            // clang-format off
-            auto it = std::find_if(
-                results.begin(),
-                results.end(),
-                [&](const BenchmarkResult& r)
-                { 
-                    return r.map_name == map_name && r.map_size == size && r.operation == operation; 
-                }
-            );
-            // clang-format on
+            const auto* result = find_result(results, map_name, operation, size);
 
-            if (it != results.end())
-                output << std::setw(15) << it->duration_ms;
+            if (result != nullptr)
+                output << std::setw(15) << result->duration_ms;
             else
                 output << std::setw(15) << "-";
         }
@@ -399,21 +493,17 @@ void print_results_csv(
     {
         for (auto size : map_sizes)
         {
-            // clang-format off
-            auto it = std::find_if(
-                results.begin(),
-                results.end(),
-                [&](const BenchmarkResult& r)
-                { 
-                    return r.map_name == map_name && r.map_size == size && r.operation == operation; 
-                }
-            );
-            // clang-format on
+            const auto* result = find_result(results, map_name, operation, size);
 
-            if (it != results.end())
+            if (result != nullptr)
             {
-                output << operation << ";" << map_name << ";" << size << ";" << std::setprecision(4)
-                       << it->duration_ms << "\n";
+                // clang-format off
+                output << operation 
+                    << ";" << map_name 
+                    << ";" << size 
+                    << ";" << std::setprecision(7) << result->duration_ms 
+                    << "\n";
+                // clang-format on
             }
         }
     }
@@ -421,7 +511,19 @@ void print_results_csv(
 
 int main()
 {
-    std::vector<size_t> map_sizes = {10, 100, 1000, 10000, 100000, 1000000};
+    // clang-format off
+    std::vector<TestConfig> base_configs = 
+    {
+        {"", "", 10, 100'000},
+        {"", "", 100, 100'000},
+        {"", "", 1'000, 100'000},
+        {"", "", 10'000, 100'000},
+        {"", "", 100'000, 100'000},
+        {"", "", 1'000'000, 100'000}
+    };
+    // clang-format on
+    std::vector<size_t> map_sizes;
+
     std::vector<std::string> map_names {
         "std::map",
         "std::unordered_map",
@@ -441,15 +543,22 @@ int main()
     using BTree256 = bmap<int, int, 256>;
 
     std::vector<BenchmarkResult> all_results;
+    TestConfig config;
 
-    for (auto n : map_sizes)
+    for (auto& config : base_configs)
+        map_sizes.push_back(config.map_size);
+
+    for (auto& config : base_configs)
     {
-        const size_t reps = calc_repetitions(n);
-        std::cerr << "Running tests for size: " << n << " (" << reps << " reps)...";
+        // const size_t reps = calc_repetitions(n);
+        // std::cerr << "Running tests for size: " << n << " (" << reps << " reps)...";
+        std::cerr << "Running tests for config (" << config.map_size << ", " << config.op_count
+                  << ")...";
+
         auto start = std::chrono::high_resolution_clock::now();
 
-        auto results = run_all_benchmarks_for_size(
-            n,
+        auto results = run_all_benchmarks(
+            config,
             map_names,
             StdMap {},
             StdUnordered {},
