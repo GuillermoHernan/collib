@@ -1,16 +1,16 @@
 /*
  * Copyright (c) 2026 Guillermo Hernan Martin
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -19,7 +19,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
- 
+
+#include <array>
 #include <chrono>
 #include <iostream>
 #include <map>
@@ -217,33 +218,83 @@ void print_results_table(
     const std::vector<BenchmarkResult>& results,
     const std::string& operation,
     const std::vector<std::string>& map_names,
-    const std::vector<size_t>& map_sizes
+    const std::vector<size_t>& map_sizes,
+    std::ostream& output
 )
 {
-    std::cout << "\n== Resultados para operación: " << operation << " ==\n";
+    output << "\n# Operation: " << operation << "\n\n";
 
-    std::cout << std::setw(25) << "Configuración";
+    output << std::setw(25) << "Configuration";
     for (auto size : map_sizes)
-        std::cout << std::setw(15) << size;
-    std::cout << '\n';
+        output << std::setw(15) << size;
+    output << '\n';
 
     for (const auto& map_name : map_names)
     {
-        std::cout << std::setw(25) << std::setprecision(4) << map_name;
+        output << std::setw(25) << std::setprecision(4) << map_name;
         for (auto size : map_sizes)
         {
+            // clang-format off
             auto it = std::find_if(
                 results.begin(),
                 results.end(),
                 [&](const BenchmarkResult& r)
-                { return r.map_name == map_name && r.map_size == size && r.operation == operation; }
+                { 
+                    return r.map_name == map_name && r.map_size == size && r.operation == operation; 
+                }
             );
+            // clang-format on
+
             if (it != results.end())
-                std::cout << std::setw(15) << it->duration_ms;
+                output << std::setw(15) << it->duration_ms;
             else
-                std::cout << std::setw(15) << "-";
+                output << std::setw(15) << "-";
         }
-        std::cout << '\n';
+        output << '\n';
+    }
+}
+
+void print_results_csv_header(std::ostream& output, char separator = ';')
+{
+    // clang-format off
+    output << "operation" 
+        << separator << "config" 
+        << separator << "size" 
+        << separator << "time_ms" 
+        << "\n";
+    // clang-format on
+}
+
+void print_results_csv(
+    const std::vector<BenchmarkResult>& results,
+    const std::string& operation,
+    const std::vector<std::string>& map_names,
+    const std::vector<size_t>& map_sizes,
+    std::ostream& output,
+    char separator = ';'
+)
+{
+    for (const auto& map_name : map_names)
+    {
+        for (auto size : map_sizes)
+        {
+            // clang-format off
+            auto it = std::find_if(
+                results.begin(),
+                results.end(),
+                [&](const BenchmarkResult& r)
+                { 
+                    return r.map_name == map_name && r.map_size == size && r.operation == operation; 
+                }
+            );
+            // clang-format on
+
+            if (it != results.end())
+            {
+                output << operation << ";" << map_name << ";" << size << ";" << std::setprecision(4)
+                       << it->duration_ms << "\n";
+            }
+        }
     }
 }
 
@@ -272,7 +323,7 @@ int main()
 
     for (auto n : map_sizes)
     {
-        std::cout << "Running tests for size: " << n << " ...\n";
+        std::cerr << "Running tests for size: " << n << " ...\n";
 
         auto results = run_all_benchmarks_for_size(
             n,
@@ -288,10 +339,19 @@ int main()
         all_results.insert(all_results.end(), results.begin(), results.end());
     }
 
-    for (auto& op : {"insertion", "insertion_random", "find", "erase", "sequential_read"})
-    {
-        print_results_table(all_results, op, map_names, map_sizes);
-    }
+    std::array operations {"insertion", "insertion_random", "find", "erase", "sequential_read"};
+
+    std::cout << "\n--- CSV ---\n\n";
+    print_results_csv_header(std::cout);
+
+    for (auto& op : operations)
+        print_results_csv(all_results, op, map_names, map_sizes, std::cout);
+
+    std::cout << "\n--- FORMATTED ---\n";
+
+    for (auto& op : operations)
+        print_results_table(all_results, op, map_names, map_sizes, std::cout);
+
 
     return 0;
 }
