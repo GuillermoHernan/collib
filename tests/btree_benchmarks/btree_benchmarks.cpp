@@ -96,20 +96,23 @@ inline auto get_value(const Entry& e) -> decltype(e.value)
     return e.value;
 }
 
-template <typename MapType, typename Key, typename Value>
-BenchmarkResult run_insertion(size_t n, const std::string& name)
+template <typename MapType>
+void run_insertion(size_t n)
 {
+    using Key = MapType::key_type;
+    using Value = MapType::mapped_type;
+
     MapType m;
-    auto start = std::chrono::high_resolution_clock::now();
     for (size_t i = 0; i < n; ++i)
         map_insert(m, static_cast<Key>(i), static_cast<Value>(i));
-    auto end = std::chrono::high_resolution_clock::now();
-    return {name, n, "insertion", std::chrono::duration<double, std::milli>(end - start).count()};
 }
 
-template <typename MapType, typename Key, typename Value>
-BenchmarkResult run_insertion_random(size_t n, const std::string& name)
+template <typename MapType>
+void run_insertion_random(size_t n)
 {
+    using Key = MapType::key_type;
+    using Value = MapType::mapped_type;
+
     std::mt19937_64 rng(12345);
     std::uniform_int_distribution<Key> dist(0, static_cast<Key>(n * 10));
     std::vector<Key> keys(n);
@@ -117,16 +120,16 @@ BenchmarkResult run_insertion_random(size_t n, const std::string& name)
         keys[i] = dist(rng);
 
     MapType m;
-    auto start = std::chrono::high_resolution_clock::now();
     for (size_t i = 0; i < n; ++i)
         map_insert(m, keys[i], static_cast<Value>(i));
-    auto end = std::chrono::high_resolution_clock::now();
-    return {name, n, "insertion_random", std::chrono::duration<double, std::milli>(end - start).count()};
 }
 
-template <typename MapType, typename Key>
-BenchmarkResult run_find(size_t n, const std::string& name)
+template <typename MapType>
+void run_find(size_t n)
 {
+    using Key = MapType::key_type;
+    using Value = MapType::mapped_type;
+
     MapType m;
     for (size_t i = 0; i < n; ++i)
         map_insert(m, static_cast<Key>(i), static_cast<Key>(i));
@@ -135,7 +138,6 @@ BenchmarkResult run_find(size_t n, const std::string& name)
     std::uniform_int_distribution<Key> dist(0, static_cast<Key>(n - 1));
     size_t found = 0;
 
-    auto start = std::chrono::high_resolution_clock::now();
     for (size_t i = 0; i < n; ++i)
     {
         Key key = dist(rng);
@@ -148,30 +150,28 @@ BenchmarkResult run_find(size_t n, const std::string& name)
 
     // Usar volatile found para evitar optimizaciones agresivas, aunque no requerido aquí
     volatile auto dummy = found;
-
-    return {name, n, "find", std::chrono::duration<double, std::milli>(end - start).count()};
 }
 
-template <typename MapType, typename Key>
-BenchmarkResult run_erase(size_t n, const std::string& name)
+template <typename MapType>
+void run_erase(size_t n)
 {
+    using Key = MapType::key_type;
+    using Value = MapType::mapped_type;
+
     MapType m;
     for (size_t i = 0; i < n; ++i)
         map_insert(m, static_cast<Key>(i), static_cast<Key>(i));
 
     size_t erased = 0;
-    auto start = std::chrono::high_resolution_clock::now();
     for (size_t i = 0; i < n; ++i)
     {
         if (map_erase(m, static_cast<Key>(i)))
             ++erased;
     }
-    auto end = std::chrono::high_resolution_clock::now();
-    return {name, n, "erase", std::chrono::duration<double, std::milli>(end - start).count()};
 }
 
 template <typename MapType>
-BenchmarkResult run_seq_read(size_t n, const std::string& name)
+void run_seq_read(size_t n)
 {
     MapType m;
     for (size_t i = 0; i < n; ++i)
@@ -184,11 +184,67 @@ BenchmarkResult run_seq_read(size_t n, const std::string& name)
     }
 
     volatile typename MapType::mapped_type sink {};
-    auto start = std::chrono::high_resolution_clock::now();
     for (const auto& kv : m)
         sink = get_value(kv);
-    auto end = std::chrono::high_resolution_clock::now();
-    return {name, n, "sequential_read", std::chrono::duration<double, std::milli>(end - start).count()};
+}
+
+size_t calc_repetitions(size_t size)
+{
+    const double maxReps = 299;
+    const double minReps = 3;
+    const double maxRepsLogSize = 1;
+    const double minRepsLogSize = 5.2;
+    const double k = (minReps - maxReps) / (minRepsLogSize - maxRepsLogSize);
+    const double c = maxReps - maxRepsLogSize * k;
+
+    const double logSize = std::log10(double(size));
+    double dReps = logSize * k + c;
+
+    dReps = std::max(dReps, minReps);
+    dReps = std::min(dReps, maxReps);
+
+    size_t iReps = size_t(std::round(dReps));
+
+    // Should be odd.
+    if ((iReps & 1) == 0)
+        ++iReps;
+
+    return iReps;
+}
+
+template <typename BenchmarkFn>
+BenchmarkResult run_benchmark(BenchmarkFn func, BenchmarkResult params, const std::string& operation)
+{
+    const size_t size = params.map_size;
+    const size_t nReps = calc_repetitions(size);
+    std::vector<double> measurements;
+    measurements.reserve(nReps);
+
+    params.operation = operation;
+
+    // Warmup
+    func(size);
+
+    for (size_t i = 0; i < nReps; ++i)
+    {
+        auto start = std::chrono::high_resolution_clock::now();
+        func(size);
+        auto end = std::chrono::high_resolution_clock::now();
+        measurements.push_back(std::chrono::duration<double, std::milli>(end - start).count());
+    }
+
+    // Get the median
+    //std::sort(measurements.begin(), measurements.end());
+    //params.duration_ms = measurements[nReps / 2];
+
+    //Get the average
+    double acc = 0;
+    for (double v : measurements)
+        acc += v;
+
+    params.duration_ms = acc / measurements.size();
+
+    return params;
 }
 
 // Función variádica para ejecutar todas las pruebas para todos los mapas pasados y acumular resultados
@@ -200,11 +256,16 @@ run_all_benchmarks_for_size(size_t n, const std::vector<std::string>& map_names,
 
     auto run_for_map = [&](auto&& map_type, const std::string& name)
     {
-        results.push_back(run_insertion<std::decay_t<decltype(map_type)>, int, int>(n, name));
-        results.push_back(run_insertion_random<std::decay_t<decltype(map_type)>, int, int>(n, name));
-        results.push_back(run_find<std::decay_t<decltype(map_type)>, int>(n, name));
-        results.push_back(run_erase<std::decay_t<decltype(map_type)>, int>(n, name));
-        results.push_back(run_seq_read<std::decay_t<decltype(map_type)>>(n, name));
+        using MapT = std::decay_t<decltype(map_type)>;
+        BenchmarkResult params;
+        params.map_name = name;
+        params.map_size = n;
+
+        results.push_back(run_benchmark(run_insertion<MapT>, params, "insertion"));
+        results.push_back(run_benchmark(run_insertion_random<MapT>, params, "insertion_random"));
+        results.push_back(run_benchmark(run_find<MapT>, params, "find"));
+        results.push_back(run_benchmark(run_erase<MapT>, params, "erase"));
+        results.push_back(run_benchmark(run_seq_read<MapT>, params, "sequential_read"));
     };
 
     size_t idx = 0;
@@ -323,7 +384,9 @@ int main()
 
     for (auto n : map_sizes)
     {
-        std::cerr << "Running tests for size: " << n << " ...\n";
+        const size_t reps = calc_repetitions(n);
+        std::cerr << "Running tests for size: " << n << " (" << reps << " reps)...";
+        auto start = std::chrono::high_resolution_clock::now();
 
         auto results = run_all_benchmarks_for_size(
             n,
@@ -337,6 +400,10 @@ int main()
             BTree256 {}
         );
         all_results.insert(all_results.end(), results.begin(), results.end());
+
+        auto end = std::chrono::high_resolution_clock::now();
+        const double seconds = std::chrono::duration<double>(end - start).count();
+        std::cerr << std::setprecision(3) << " (" << seconds << "s)\n";
     }
 
     std::array operations {"insertion", "insertion_random", "find", "erase", "sequential_read"};
@@ -351,7 +418,6 @@ int main()
 
     for (auto& op : operations)
         print_results_table(all_results, op, map_names, map_sizes, std::cout);
-
 
     return 0;
 }
