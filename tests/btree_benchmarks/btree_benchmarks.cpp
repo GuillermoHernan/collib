@@ -371,16 +371,20 @@ BenchmarkResult run_benchmark(TestConfig config, const std::string& operation)
     BenchmarkResult result;
     result.config = config;
 
+    // Get fastest
+     std::sort(measurements.begin(), measurements.end());
+     result.duration_ms = measurements.front();
+
     // Get the median
     // std::sort(measurements.begin(), measurements.end());
-    // params.duration_ms = measurements[nReps / 2];
+    // result.duration_ms = measurements[nReps / 2];
 
     // Get the average
-    double acc = 0;
-    for (double v : measurements)
-        acc += v;
+    //double acc = 0;
+    //for (double v : measurements)
+    //    acc += v;
 
-    result.duration_ms = acc / measurements.size();
+    //result.duration_ms = acc / measurements.size();
 
     return result;
 }
