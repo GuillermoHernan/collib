@@ -487,6 +487,31 @@ TEST_CASE_METHOD(BTreeTests, "bmap: random inserts", "[btree][split_nodes][rando
     CHECK(checkMap(m));
 }
 
+TEST_CASE_METHOD(BTreeTests, "bmap: fill the tree in reverse order", "[btree][split_nodes][reverse]")
+{
+    bmap<LifeCycleObject, std::string, 4> m;
+    const int count = 512;
+
+    for (int i = count - 1; i >= 0; --i)
+        m[i] = std::to_string(i);
+
+    CHECK(checkMap(m));
+
+    int i = 0;
+    for (const auto entry : m)
+    {
+        CHECK(entry.key == i);
+        CHECK(entry.value == std::to_string(i));
+
+        ++i;
+    }
+
+    for (int i = 0; i < count; ++i)
+    {
+        CHECK(m.at(i) == std::to_string(i));
+    }
+}
+
 TEST_CASE_METHOD(BTreeTests, "bmap: Interleaved inserts to expose bug", "[btree][bug][linked_list]")
 {
     // This test is designed to expose a bug found inserting nodes, that leaf nodes linked list was not
