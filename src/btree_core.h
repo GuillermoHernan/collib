@@ -333,7 +333,8 @@ private:
 
     struct SplitInternalResult
     {
-        Node* newNode;
+        Node* left;
+        Node* right;
         Key separator;
     };
 
@@ -380,6 +381,22 @@ private:
             next = right;
             if (right)
                 right->prev = this;
+        }
+
+        void insert_before(NodeLeaf* right)
+        {
+            assert(prev == nullptr);
+            assert(next == nullptr);
+            assert(right != nullptr);
+
+            NodeLeaf* left = right->prev;
+
+            next = right;
+            right->prev = this;
+
+            prev = left;
+            if (left)
+                left->next = this;
         }
 
         // Note: No deallocation is performed!
@@ -542,7 +559,7 @@ private:
 
             size_type mid_index = this->count() / 2;
             NodeInternal* sibling = new (mem_block) NodeInternal(this->children[mid_index + 1]);
-            SplitInternalResult result {sibling, this->key(mid_index)};
+            SplitInternalResult result {this, sibling, this->key(mid_index)};
 
             // Move keys. Keys re divided like this:
             // - mid_index keys remain in the original node.
@@ -784,11 +801,30 @@ BTreeCore<Key, Params>::insert_at_leaf(NodeLeaf* leaf, const Key& key)
 
     if (leaf->count() >= Order)
     {
-        NodeLeaf* new_sibling = split_leaf(leaf);
-        NodeLeaf* target_leaf = i < leaf->count() ? leaf : new_sibling;
-        auto result = insert_at_leaf(target_leaf, key);
-        result.split = SplitInternalResult {new_sibling, new_sibling->key(0)};
-        return result;
+        if (i == leaf->count())
+        {
+            NodeLeaf* right = create<NodeLeaf>(*m_alloc);
+            right->insert_after(leaf);
+            auto result = insert_at_leaf(right, key);
+            result.split = SplitInternalResult {leaf, right, key};
+            return result;
+        }
+        else if (i == 0)
+        {
+            NodeLeaf* left = create<NodeLeaf>(*m_alloc);
+            left->insert_before(leaf);
+            auto result = insert_at_leaf(left, key);
+            result.split = SplitInternalResult {left, leaf, key};
+            return result;
+        }
+        else
+        {
+            NodeLeaf* right = split_leaf(leaf);
+            NodeLeaf* target_leaf = i < leaf->count() ? leaf : right;
+            auto result = insert_at_leaf(target_leaf, key);
+            result.split = SplitInternalResult {leaf, right, right->key(0)};
+            return result;
+        }
     }
 
     void* valuePtr = leaf->insert(i, key);
@@ -809,7 +845,8 @@ BTreeCore<Key, Params>::insert_at_internal(NodeInternal* node, const Key& key, u
         return result;
 
     assert(node->children[0] != nullptr);
-    node->insert_right(i, result.split->separator, result.split->newNode);
+    node->insert_right(i, result.split->separator, result.split->right);
+    node->children[i] = result.split->left;
 
     if (node->count() < Order)
         result.split = std::nullopt;
@@ -843,7 +880,7 @@ typename BTreeCore<Key, Params>::InsertResult BTreeCore<Key, Params>::insert(con
     {
         void* mem_block = checked_alloc<NodeInternal>(*m_alloc);
         NodeInternal* new_root = new (mem_block)
-            NodeInternal(m_root, std::move(result.split->separator), result.split->newNode);
+            NodeInternal(result.split->left, std::move(result.split->separator), result.split->right);
 
         m_root = new_root;
         ++m_height;
