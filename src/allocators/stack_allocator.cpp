@@ -206,13 +206,22 @@ SAllocResult StackAllocator::alloc(byte_size bytes, align a)
         pushNewBlock(correctedSize, a);
 
     ++m_stats.allocCount;
-    return m_firstBlock->pushChunk(count_t(correctedSize), a);
+    SAllocResult result = m_firstBlock->pushChunk(count_t(correctedSize), a);
+
+    AllocLogger::instance().alloc(*this, bytes, result.bytes, result.buffer, a);
+    return result;
 }
 
 byte_size StackAllocator::tryExpand(byte_size bytes, void* ptr)
 {
     uint8_t* buffer = reinterpret_cast<uint8_t*>(ptr);
     SBlockHeader* curBlock = m_firstBlock;
+
+    auto logResult = [bytes, ptr, this](byte_size result)
+    {
+        AllocLogger::instance().tryExpand(*this, bytes, result, ptr);
+        return result;
+    };
 
     for (; curBlock != nullptr; curBlock = curBlock->next)
     {
@@ -224,7 +233,7 @@ byte_size StackAllocator::tryExpand(byte_size bytes, void* ptr)
 
         ChunkData* topChunk = curBlock->chunksTop();
         if (buffer != base + topChunk->offset())
-            return 0;
+            return logResult(0);
 
         const byte_size available = curBlock->freeBytes();
         const align a = topChunk->align();
@@ -236,13 +245,13 @@ byte_size StackAllocator::tryExpand(byte_size bytes, void* ptr)
         if (newSize > currentSize)
         {
             curBlock->dataBytesUsed += count_t(newSize - currentSize);
-            return newSize;
+            return logResult(newSize);
         }
         else
-            return 0;
+            return logResult(0);
     }
 
-    return 0;
+    return logResult(0);
 }
 
 void StackAllocator::free(void* buffer)
@@ -256,6 +265,7 @@ void StackAllocator::free(void* buffer)
         {
             --m_stats.allocCount;
             cleanAfterFree();
+            AllocLogger::instance().free(*this, buffer);
             return;
         }
     }

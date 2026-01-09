@@ -43,15 +43,24 @@ SAllocResult ArenaAllocator::alloc(byte_size bytes, align a)
     const byte_size offset = m_usedBytes + padding;
     m_usedBytes += totalSize;
 
-    return SAllocResult {m_buffer.data() + offset, correctedSize};
+    SAllocResult result{m_buffer.data() + offset, correctedSize};
+    AllocLogger::instance().alloc(*this, bytes, correctedSize, result.buffer, a);
+
+    return result;
 }
 
-byte_size ArenaAllocator::tryExpand(byte_size bytes, void*) { return 0; }
+byte_size ArenaAllocator::tryExpand(byte_size bytes, void* buffer) 
+{ 
+    AllocLogger::instance().tryExpand(*this, bytes, 0, buffer);
+    return 0;
+}
 
 void ArenaAllocator::free(void* block)
 {
     if (!m_buffer.contains(reinterpret_cast<uint8_t*>(block)))
         return m_fallback.free(block);
+    else
+        AllocLogger::instance().free(*this, block);
 
     // If the block is within the Arena, nothing is done. All memory is freed at the end.
 }

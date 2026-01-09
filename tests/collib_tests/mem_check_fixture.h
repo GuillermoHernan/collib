@@ -31,6 +31,6 @@ public:
     ~MemCheckFixture();
 
 private:
-    coll::DebugAllocator m_dalloc;
-    coll::AllocatorHolder m_holder;
+    coll::DebugLogSink m_sink;
+    coll::AllocLoggerHolder m_holder;
 };

@@ -25,7 +25,7 @@
 #include "life_cycle_object.h"
 #include "mem_check_fixture.h"
 
-static bool checkLeaks(const coll::DebugAllocator& dalloc)
+static bool checkLeaks(const coll::DebugLogSink& dalloc)
 {
     if (dalloc.liveAllocationsCount() > 0)
     {
@@ -39,13 +39,13 @@ static bool checkLeaks(const coll::DebugAllocator& dalloc)
 }
 
 MemCheckFixture::MemCheckFixture()
-    : m_holder(m_dalloc)
+    : m_holder(m_sink)
 {
     LifeCycleObject::reset_counters();
 }
 
 MemCheckFixture::~MemCheckFixture()
 {
-    CHECK(checkLeaks(m_dalloc));
+    CHECK(checkLeaks(m_sink));
     CHECK(LifeCycleObject::all_destroyed());
 }

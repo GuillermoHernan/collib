@@ -1,16 +1,16 @@
 /*
  * Copyright (c) 2026 Guillermo Hernan Martin
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -19,7 +19,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
- 
+
 #include "allocator.h"
 
 #include "collib_version.h"
@@ -27,19 +27,49 @@
 #include "darray.h"
 
 #include <iostream>
+#include <functional>
 #include <malloc.h>
 
 namespace coll
 {
 thread_local darray<IAllocator*> tl_defaultAllocators;
+thread_local darray<IAllocLogger*> tl_loggers;
+
+// TODO: Make public??
+class AtExit
+{
+public:
+    AtExit(std::function<void()>&& fn)
+        : m_fn(std::move(fn))
+    {
+    }
+
+    ~AtExit() { m_fn(); }
+
+private:
+    std::function<void()> m_fn;
+};
 
 struct MallocAllocator : public IAllocator
 {
-    SAllocResult alloc(byte_size bytes, align) override { return {malloc(bytes), bytes}; }
+    SAllocResult alloc(byte_size bytes, align a) override
+    {
+        SAllocResult result {malloc(bytes), bytes};
+        AllocLogger::instance().alloc(*this, bytes, bytes, result.buffer, a);
+        return result;
+    }
 
-    byte_size tryExpand(byte_size, void*) override { return 0; }
+    byte_size tryExpand(byte_size requestedBytes, void* buffer) override
+    {
+        AllocLogger::instance().tryExpand(*this, requestedBytes, 0, buffer);
+        return 0;
+    }
 
-    void free(void* buffer) override { ::free(buffer); }
+    void free(void* buffer) override
+    {
+        AllocLogger::instance().free(*this, buffer);
+        ::free(buffer);
+    }
 };
 
 IAllocator& defaultAllocator()
@@ -52,58 +82,72 @@ IAllocator& defaultAllocator()
         return *tl_defaultAllocators.back();
 }
 
-struct DebugAllocator::SInternal
+struct SAllocationKey
 {
-    bmap<void*, byte_size, 32> allocations;
+    const IAllocator* allocator;
+    const void* buffer;
+
+    auto operator<=>(const SAllocationKey&) const = default;
 };
 
-DebugAllocator::DebugAllocator(IAllocator& alloc)
-    : m_int(create<SInternal>(alloc))
-    , m_alloc(alloc)
+struct DebugLogSink::SInternal
+{
+    bmap<SAllocationKey, byte_size, 32> allocations;
+};
+
+DebugLogSink::DebugLogSink()
+    : m_alloc(defaultAllocator())
+    , m_int(create<SInternal>(m_alloc))
 {
 }
 
-DebugAllocator::~DebugAllocator() { destroy(m_alloc, m_int); }
+DebugLogSink::~DebugLogSink() { destroy(m_alloc, m_int); }
 
-SAllocResult DebugAllocator::alloc(byte_size bytes, align a)
+void DebugLogSink::alloc(
+    const IAllocator& alloc,
+    byte_size requestedBytes,
+    byte_size allocBytes,
+    const void* buffer,
+    align a
+)
 {
-    SAllocResult result = m_alloc.alloc(bytes, a);
-
-    if (result.buffer != nullptr)
-        m_int->allocations.insert_or_assign(result.buffer, result.bytes);
-
-    return result;
+    m_int->allocations.insert_or_assign(SAllocationKey {&alloc, buffer}, requestedBytes);
 }
 
-byte_size DebugAllocator::tryExpand(byte_size bytes, void* ptr)
+void DebugLogSink::tryExpand(
+    const IAllocator& alloc,
+    byte_size requestedBytes,
+    byte_size allocBytes,
+    const void* buffer
+)
 {
-    const byte_size newSize = m_alloc.tryExpand(bytes, ptr);
-
-    if (newSize > bytes)
-        m_int->allocations[ptr] = newSize;
-
-    return newSize;
-}
-
-void DebugAllocator::free(void* ptr)
-{
-    if (ptr == nullptr)
+    if (requestedBytes == 0)
         return;
 
-    m_alloc.free(ptr);
-    m_int->allocations.erase(ptr);
+    m_int->allocations[SAllocationKey {&alloc, buffer}] = allocBytes;
 }
 
-count_t DebugAllocator::liveAllocationsCount() const { return m_int->allocations.size(); }
+void DebugLogSink::free(const IAllocator& alloc, const void* buffer)
+{
+    if (buffer == nullptr)
+        return;
 
-std::ostream& DebugAllocator::reportLiveAllocations(std::ostream& os) const
+    m_int->allocations.erase(SAllocationKey {&alloc, buffer});
+}
+
+count_t DebugLogSink::liveAllocationsCount() const { return m_int->allocations.size(); }
+
+std::ostream& DebugLogSink::reportLiveAllocations(std::ostream& os) const
 {
     // CSV header
-    os << "address;size_bytes\n";
+    os << "address;size_bytes;allocator\n";
 
-    for (const auto& [ptr, size] : m_int->allocations)
+    for (const auto& [key, size] : m_int->allocations)
     {
-        os << "0x" << std::hex << reinterpret_cast<uintptr_t>(ptr) << std::dec << ";" << size << "\n";
+        os << "0x" << std::hex << reinterpret_cast<uintptr_t>(key.buffer);
+        os << std::dec << "; " << size;
+        os << "; 0x" << std::hex << reinterpret_cast<uintptr_t>(key.allocator);
+        os << std::dec << "\n";
     }
 
     return os;
@@ -128,6 +172,82 @@ void AllocatorHolder::pop()
 
         m_alloc = nullptr;
     }
+}
+
+AllocLoggerHolder::AllocLoggerHolder(IAllocLogger& logSink)
+{
+    tl_loggers.push_back(&logSink);
+    m_logSink = &logSink;
+}
+
+void AllocLoggerHolder::pop()
+{
+    if (m_logSink != nullptr)
+    {
+        for (count_t i = 0; i < tl_loggers.size(); ++i)
+        {
+            if (auto* sink = tl_loggers[i]; sink == m_logSink)
+            {
+                tl_loggers.erase(i);
+                break;
+            }
+        }
+
+        m_logSink = nullptr;
+    }
+}
+
+void AllocLogger::alloc(
+    const IAllocator& allocator,
+    byte_size requestedBytes,
+    byte_size allocBytes,
+    const void* buffer,
+    align a
+)
+{
+    if (m_recursiveGuard)
+        return;
+
+    m_recursiveGuard = true;
+    AtExit ex([this]() { m_recursiveGuard = false; });
+
+    for (auto* sink : tl_loggers)
+        sink->alloc(allocator, requestedBytes, allocBytes, buffer, a);
+}
+
+void AllocLogger::tryExpand(
+    const IAllocator& allocator,
+    byte_size requestedBytes,
+    byte_size allocBytes,
+    const void* buffer
+)
+{
+    if (m_recursiveGuard)
+        return;
+
+    m_recursiveGuard = true;
+    AtExit ex([this]() { m_recursiveGuard = false; });
+
+    for (auto* sink : tl_loggers)
+        sink->tryExpand(allocator, requestedBytes, allocBytes, buffer);
+}
+
+void AllocLogger::free(const IAllocator& allocator, const void* buffer)
+{
+    if (m_recursiveGuard)
+        return;
+
+    m_recursiveGuard = true;
+    AtExit ex([this]() { m_recursiveGuard = false; });
+
+    for (auto* sink : tl_loggers)
+        sink->free(allocator, buffer);
+}
+
+AllocLogger& AllocLogger::instance()
+{
+    static AllocLogger logger;
+    return logger;
 }
 
 } // namespace coll

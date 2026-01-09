@@ -1,16 +1,16 @@
 /*
  * Copyright (c) 2026 Guillermo Hernan Martin
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -19,7 +19,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
- 
+
 #pragma once
 
 #include "collib_types.h"
@@ -119,18 +119,98 @@ void destroy(IAllocator& alloc, T* obj)
     alloc.free(obj);
 }
 
-// DebugAllocator, to help to find and fix memory leaks.
-class DebugAllocator final : public IAllocator
+// Interface for a log backend for the allocator system
+struct IAllocLogger
+{
+    virtual void alloc(
+        const IAllocator& alloc,
+        byte_size requestedBytes,
+        byte_size allocBytes,
+        const void* buffer,
+        align a
+    ) = 0;
+
+    virtual void tryExpand(
+        const IAllocator& alloc,
+        byte_size requestedBytes,
+        byte_size allocBytes,
+        const void* buffer
+    ) = 0;
+
+    virtual void free(const IAllocator& alloc, const void* buffer) = 0;
+
+protected:
+    ~IAllocLogger() = default;
+};
+
+class AllocLoggerHolder
 {
 public:
-    explicit DebugAllocator(IAllocator& alloc = defaultAllocator());
-    ~DebugAllocator();
+    AllocLoggerHolder(IAllocLogger& logSink);
 
-    // IAllocator implementation
-    SAllocResult alloc(byte_size bytes, align a) override;
-    byte_size tryExpand(byte_size bytes, void* ptr) override;
-    void free(void* ptr) override;
-    ///////////////////////
+    ~AllocLoggerHolder() { pop(); }
+    void pop();
+
+private:
+    IAllocLogger* m_logSink;
+};
+
+// Allocators must use this to log allocations.
+class AllocLogger final : public IAllocLogger
+{
+public:
+    // IAllocLogger implementation
+    //-----------------------------
+    virtual void alloc(
+        const IAllocator& alloc,
+        byte_size requestedBytes,
+        byte_size allocBytes,
+        const void* buffer,
+        align a
+    ) override;
+
+    virtual void tryExpand(
+        const IAllocator& alloc,
+        byte_size requestedBytes,
+        byte_size allocBytes,
+        const void* buffer
+    ) override;
+
+    virtual void free(const IAllocator& alloc, const void* buffer) override;
+    //-----------------------------
+
+    static AllocLogger& instance();
+
+private:
+    bool m_recursiveGuard = false;
+};
+
+// DebugLogSink, to help to find and fix memory leaks.
+class DebugLogSink final : public IAllocLogger
+{
+public:
+    DebugLogSink();
+    ~DebugLogSink();
+
+    // IAllocLogger implementation
+    //-----------------------------
+    virtual void alloc(
+        const IAllocator& alloc,
+        byte_size requestedBytes,
+        byte_size allocBytes,
+        const void* buffer,
+        align a
+    ) override;
+
+    virtual void tryExpand(
+        const IAllocator& alloc,
+        byte_size requestedBytes,
+        byte_size allocBytes,
+        const void* buffer
+    ) override;
+
+    virtual void free(const IAllocator& alloc, const void* buffer) override;
+    //-----------------------------
 
     count_t liveAllocationsCount() const;
 
@@ -138,11 +218,12 @@ public:
 
 private:
     struct SInternal;
-    SInternal* m_int;
-    IAllocator& m_alloc;
 
-    DebugAllocator(const DebugAllocator&) = delete;
-    DebugAllocator& operator=(const DebugAllocator&) = delete;
+    IAllocator& m_alloc;
+    SInternal* m_int;
+
+    DebugLogSink(const DebugLogSink&) = delete;
+    DebugLogSink& operator=(const DebugLogSink&) = delete;
 };
 
 } // namespace coll

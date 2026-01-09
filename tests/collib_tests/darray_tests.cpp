@@ -693,3 +693,87 @@ TEST_CASE_METHOD(DarrayTests, "darray: reverse", "[darray][reverse]")
 
     CHECK(db == expected);
 }
+
+TEST_CASE_METHOD(DarrayTests, "darray: erase elemento intermedio", "[darray][erase]")
+{
+    darray<LifeCycleObject> da = {1, 2, 3, 4, 5};
+    da.erase(2); // eliminar el 3
+    CHECK(da.size() == 4);
+    CHECK(da[0] == 1);
+    CHECK(da[1] == 2);
+    CHECK(da[2] == 4);
+    CHECK(da[3] == 5);
+}
+
+TEST_CASE_METHOD(DarrayTests, "darray: erase primer elemento", "[darray][erase]")
+{
+    darray<LifeCycleObject> da = {1, 2, 3};
+    da.erase(0);
+    CHECK(da.size() == 2);
+    CHECK(da[0] == 2);
+    CHECK(da[1] == 3);
+}
+
+TEST_CASE_METHOD(DarrayTests, "darray: erase último elemento", "[darray][erase]")
+{
+    darray<LifeCycleObject> da = {1, 2, 3};
+    da.erase(2);
+    CHECK(da.size() == 2);
+    CHECK(da[0] == 1);
+    CHECK(da[1] == 2);
+}
+
+TEST_CASE_METHOD(DarrayTests, "darray: erase en darray con un solo elemento", "[darray][erase]")
+{
+    darray<LifeCycleObject> da = {42};
+    da.erase(0);
+    CHECK(da.size() == 0);
+    CHECK(da.empty());
+}
+
+TEST_CASE_METHOD(
+    DarrayTests,
+    "darray: erase lanza excepción para índice fuera de rango",
+    "[darray][erase]"
+)
+{
+    darray<LifeCycleObject> da = {1, 2, 3};
+    CHECK_THROWS_AS(da.erase(3), std::out_of_range);
+    CHECK_THROWS_AS(da.erase(100), std::out_of_range);
+}
+
+TEST_CASE_METHOD(DarrayTests, "darray: erase en darray vacío lanza excepción", "[darray][erase]")
+{
+    IAllocator& alloc = defaultAllocator();
+    darray<LifeCycleObject> da(alloc);
+    CHECK_THROWS_AS(da.erase(0), std::out_of_range);
+}
+
+TEST_CASE_METHOD(DarrayTests, "darray: erase múltiples elementos consecutivos", "[darray][erase]")
+{
+    darray<LifeCycleObject> da = {1, 2, 3, 4, 5};
+    da.erase(1); // eliminar 2 -> {1,3,4,5}
+    CHECK(da[1] == 3);
+    da.erase(2); // eliminar 4 -> {1,3,5}
+    CHECK(da.size() == 3);
+    CHECK(da[0] == 1);
+    CHECK(da[1] == 3);
+    CHECK(da[2] == 5);
+}
+
+TEST_CASE_METHOD(
+    DarrayTests,
+    "darray: erase con LifeCycleObject verifica destructores",
+    "[darray][erase]"
+)
+{
+    IAllocator& alloc = defaultAllocator();
+    darray<LifeCycleObject> da(3, alloc);
+    da[0] = 10;
+    da[1] = 20;
+    da[2] = 30;
+    da.erase(1); // destructor de 20 debe llamarse
+    CHECK(da.size() == 2);
+    CHECK(da[0] == 10);
+    CHECK(da[1] == 30);
+}
