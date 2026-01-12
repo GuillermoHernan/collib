@@ -99,6 +99,20 @@ public:
     bool isAligned(byte_size size) const { return (size & mask()) == size; }
 
     template <class T>
+    T* apply(T* input)const
+    {
+        align effective = align::of<T>();
+
+        if (effective < *this)
+            effective = *this;
+
+        const byte_size pad = effective.padding<T>(input);
+
+        uint8_t* bytes = reinterpret_cast<uint8_t*>(input);
+        return reinterpret_cast<T*>(bytes + pad);
+    }
+
+    template <class T>
     constexpr byte_size padding(const T* ptr)
     {
         const uintptr_t address = reinterpret_cast<uintptr_t>(ptr);

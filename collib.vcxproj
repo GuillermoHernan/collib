@@ -21,11 +21,13 @@
   <ItemGroup>
     <ClCompile Include="src\allocators\arena_allocator.cpp" />
     <ClCompile Include="src\allocator.cpp" />
+    <ClCompile Include="src\allocators\lean_tree_allocator.cpp" />
     <ClCompile Include="src\allocators\stack_allocator.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\allocator.h" />
     <ClInclude Include="include\allocators\arena_allocator.h" />
+    <ClInclude Include="include\allocators\lean_tree_allocator.h" />
     <ClInclude Include="include\allocators\stack_allocator.h" />
     <ClInclude Include="include\bmap.h" />
     <ClInclude Include="include\btree_checker.h" />
