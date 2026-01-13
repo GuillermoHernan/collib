@@ -168,7 +168,7 @@ TEST_CASE("align_padding", "[align][padding]")
     CHECK(a8.padding((void*)nullptr) == 0);
 }
 
-TEST_CASE("power2_from_value", "[power2][round_up]")
+TEST_CASE("power2_round_up", "[power2][round_up]")
 {
     CHECK(Power2::round_up(0).log2() == 0);
     CHECK(Power2::round_up(1).log2() == 0);
@@ -227,6 +227,30 @@ TEST_CASE("power2_round_down", "[power2][round_down]")
     }
 }
 
+TEST_CASE("power2_round_up_down_consistency", "[power2][relationship]")
+{
+    SECTION("round_down(x) <= x <= round_up(x)")
+    {
+        for (byte_size i = 1; i < 512; ++i)
+        {
+            auto up = Power2::round_up(i).value();
+            auto down = Power2::round_down(i).value();
+            CHECK(down <= i);
+            CHECK(i <= up);
+            CHECK(down <= up);
+        }
+    }
+
+    SECTION("round_up and round_down are identical on exact powers of 2")
+    {
+        for (uint8_t e = 0; e < 16; ++e)
+        {
+            byte_size v = byte_size(1) << e;
+            CHECK(Power2::round_up(v).log2() == Power2::round_down(v).log2());
+        }
+    }
+}
+
 TEST_CASE("power2_from_log2", "[power2][from_log2]")
 {
     Power2 p0 = Power2::from_log2(0);
@@ -246,6 +270,11 @@ TEST_CASE("power2_value_saturation", "[power2][saturation]")
 
     CHECK(big.value() == std::numeric_limits<byte_size>::max());
     CHECK(huge.value() == std::numeric_limits<byte_size>::max());
+
+    SECTION ("Just before saturation")
+    {
+        CHECK(Power2::from_log2(sizeof(byte_size) * 8 - 1).value() < std::numeric_limits<byte_size>::max());
+    }
 }
 
 TEST_CASE("power2_parent_child", "[power2][hierarchy]")
