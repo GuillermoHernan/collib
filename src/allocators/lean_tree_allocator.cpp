@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <assert.h>
+#include <stdexcept>
 
 namespace coll
 {
@@ -56,9 +57,9 @@ static LeanTreeAllocator::Parameters validateAndCorrectParams(LeanTreeAllocator:
 {
     const uint8_t minLevels = 6;
 
-    params.basicBlockSize = std::max(params.basicBlockSize, Power2::from_value(4));
+    params.basicBlockSize = std::max(params.basicBlockSize, Power2::round_up(4));
 
-    const Power2 minTotalSize =  params.basicBlockSize << minLevels;
+    const Power2 minTotalSize = params.basicBlockSize << minLevels;
     params.totalSize = std::max(params.totalSize, minTotalSize);
     params.maxAllocSize = std::max(params.maxAllocSize, minTotalSize);
     params.maxAllocSize = std::min(params.maxAllocSize, params.totalSize);
@@ -186,7 +187,7 @@ SAllocResult LeanTreeAllocator::alloc(byte_size bytes, align a)
 {
     const Parameters& params = m_header->params;
 
-    Power2 correctedSize = Power2::from_value(bytes);
+    Power2 correctedSize = Power2::round_up(bytes);
     correctedSize = std::max(correctedSize, params.basicBlockSize);
 
     if (correctedSize > params.maxAllocSize)
@@ -208,6 +209,33 @@ byte_size LeanTreeAllocator::tryExpand(byte_size bytes, void*)
     // but it is somewhat complex.
     // I may try to implement it once the rest is working fine.
     return 0;
+}
+
+void LeanTreeAllocator::free(void* buffer)
+{
+    auto error = [](const char* message) { throw std::runtime_error(message); };
+
+    uint8_t* blockPtr = reinterpret_cast<uint8_t*>(buffer);
+    const auto& params = m_header->params;
+
+    if (blockPtr < m_header->data)
+        error("Pointer outside managed area");
+
+    const size_t offset = blockPtr - m_header->data;
+
+    // Do not let release the metadata!
+    if (offset == 0)
+        error("Trying to release meta data");
+
+    // Check that is within the managed area
+    if (offset > params.totalSize.value())
+        error("Pointer outside managed area");
+
+    // Check basic block alignment
+    if (offset % params.basicBlockSize != 0)
+        error("Bad alignment");
+
+    freeAtBlock(count_t(offset / params.basicBlockSize), topLevel());
 }
 
 SAllocResult LeanTreeAllocator::topLevelAlloc(Power2 basicBlocks)
@@ -235,7 +263,7 @@ SAllocResult LeanTreeAllocator::topLevelAlloc(Power2 basicBlocks)
     // uint8_t* blockStart = m_header->data + (byte_size(selectedIndex) << level);
     uint8_t* allocatedBlock = allocAtLevel(level, selectedIndex, basicBlocks);
 
-    return { allocatedBlock, (basicBlocks * m_header->params.basicBlockSize).value() };
+    return {allocatedBlock, (basicBlocks * m_header->params.basicBlockSize).value()};
 }
 
 uint8_t LeanTreeAllocator::topLevel() const { return levelCount(m_header->params) - 1; }
@@ -416,14 +444,54 @@ void LeanTreeAllocator::setupHeader(uint8_t* rawMemory, const Parameters& params
 void LeanTreeAllocator::allocMetadata(byte_size size)
 {
     const auto& params = m_header->params;
-    const Power2 correctedSize = Power2::from_value(size);
+    const Power2 correctedSize = Power2::round_up(size);
     const uint8_t nLevels = levelCount(params);
 
     const Power2 bytes = std::max(correctedSize, params.basicBlockSize);
     const Power2 basicBlocks = bytes / params.basicBlockSize;
 
-    uint8_t* buffer = allocAtLevel(nLevels-1, 0, basicBlocks);
+    uint8_t* buffer = allocAtLevel(nLevels - 1, 0, basicBlocks);
     assert(buffer == m_header->data);
 }
+
+void LeanTreeAllocator::freeAtBlock(count_t basicBlockIndex, uint8_t level)
+{
+    const count_t blockIndex = basicBlockIndex >> level;
+    
+    if (level == 0)
+    {
+        setBitLevelValue(0, basicBlockIndex, false);
+    }
+    else if (level < 5)
+    {
+        const bool solid = getBitLevelValue(level, blockIndex);
+
+        if (!solid)
+            freeAtBlock(basicBlockIndex, level - 1);
+        else
+        {
+            if (blockIndex % Power2::from_log2(level) != 0)
+                throw std::runtime_error("Pointer does not address the start of an allocated block");
+
+            unsigned* level0 = reinterpret_cast<unsigned*>(m_header->levels[0]);
+            setBits(level0, basicBlockIndex, byte_size(1) << level);
+        }        
+    }
+    else
+    {
+        uint8_t* levelData = m_header->levels[level];
+
+        if (levelData[blockIndex] == kUsedSolid)
+        {
+            if (blockIndex % Power2::from_log2(level) != 0)
+                throw std::runtime_error("Pointer does not address the start of an allocated block");
+
+            levelData[blockIndex] = level;
+        }
+        else
+            freeAtBlock(basicBlockIndex, level - 1);
+    }
+}
+
 
 } // namespace coll

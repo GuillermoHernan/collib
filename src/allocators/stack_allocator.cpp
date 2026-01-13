@@ -270,7 +270,7 @@ void StackAllocator::free(void* buffer)
         }
     }
 
-    throw std::runtime_error("STackAllocator: Error freeing chunk. Not found in Stack Allocator");
+    throw std::runtime_error("StackAllocator: Error freeing chunk. Not found in Stack Allocator");
 }
 
 void StackAllocator::cleanAfterFree()

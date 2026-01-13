@@ -138,7 +138,7 @@ public:
     Power2() = default;
 
     /// Creates the smallest power of 2 >= x (round up to power of 2)
-    constexpr static Power2 from_value(byte_size x)
+    constexpr static Power2 round_up(byte_size x)
     {
         if (x <= 1)
             return Power2(0);
@@ -146,6 +146,18 @@ public:
         const uint8_t totalBits = uint8_t(sizeof(x) * 8);
         Power2 p;
         p.m_log2 = totalBits - std::countl_zero(x);
+        return p;
+    }
+
+    /// Creates the greatest power of 2 <= x (round down to power of 2)
+    constexpr static Power2 round_down(byte_size x)
+    {
+        if (x <= 1)
+            return Power2(0);
+
+        const uint8_t totalBits = uint8_t(sizeof(x) * 8);
+        Power2 p;
+        p.m_log2 = totalBits - std::countl_zero(x) - 1;
         return p;
     }
 
@@ -160,7 +172,8 @@ public:
     /// Saturación en conversión a valor numérico
     constexpr byte_size value() const
     {
-        if (m_log2 >= 64)
+        // Saturate for non-representable values.
+        if (m_log2 >= (sizeof(byte_size) * 8))
             return std::numeric_limits<byte_size>::max();
         else
             return byte_size(1) << m_log2;
@@ -209,5 +222,16 @@ private:
     }
     uint8_t m_log2 = 0;
 };
+
+inline byte_size operator % (byte_size left, Power2 right)
+{
+    const byte_size mask = (byte_size(1) << right.log2()) - 1;
+    return left & mask;
+}
+
+inline byte_size operator / (byte_size left, Power2 right)
+{
+    return left >> right.log2();
+}
 
 } // namespace coll

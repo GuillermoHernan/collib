@@ -37,9 +37,9 @@ class LeanTreeAllocator : public IAllocator
 public:
     struct Parameters
     {
-        Power2 basicBlockSize = Power2::from_value(16);
-        Power2 totalSize = Power2::from_value(64 * 1024);
-        Power2 maxAllocSize = Power2::from_value(8 * 1024);
+        Power2 basicBlockSize = Power2::round_up(16);
+        Power2 totalSize = Power2::round_up(64 * 1024);
+        Power2 maxAllocSize = Power2::round_up(8 * 1024);
         align a = align::system();
     };
 
@@ -82,6 +82,8 @@ private:
     uint8_t topLevel() const;
     uint8_t* allocAtLevel(uint8_t level, count_t index, Power2 basicBlocks);
     count_t selectFittingChild(uint8_t level, count_t index, Power2 basicBlocks);
+    bool getBitLevelValue(uint8_t level, count_t index)const;
+    void setBitLevelValue(uint8_t level, count_t index, bool value);
 
     void preSplitCheck(uint8_t level, count_t index);
     void setUsedBits(count_t index, Power2 size);
@@ -91,6 +93,7 @@ private:
 
     void setupHeader(uint8_t* rawMemory, const Parameters& params);
     void allocMetadata(byte_size size);
+    void freeAtBlock(count_t basicBlockIndex, uint8_t level);
 
     IAllocator& m_backing;
     SHeader* m_header;
