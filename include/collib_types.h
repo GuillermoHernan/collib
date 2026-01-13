@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2026 Guillermo Hernan Martin
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,6 +24,7 @@
 
 #include <bit>
 #include <compare>
+#include <limits>
 #include <stdint.h>
 
 namespace coll
@@ -99,7 +100,7 @@ public:
     bool isAligned(byte_size size) const { return (size & mask()) == size; }
 
     template <class T>
-    T* apply(T* input)const
+    T* apply(T* input) const
     {
         align effective = align::of<T>();
 
@@ -126,4 +127,87 @@ public:
 private:
     uint8_t m_logSize = 0;
 };
+
+/**
+ * @brief Power2: Represents exact powers of 2 (2^n where n ∈ [0,255])
+ *        Optimized mathematical and bitwise operations for power-of-2 values.
+ */
+class Power2
+{
+public:
+    Power2() = default;
+
+    /// Creates the smallest power of 2 >= x (round up to power of 2)
+    constexpr static Power2 from_value(byte_size x)
+    {
+        if (x <= 1)
+            return Power2(0);
+        --x;
+        const uint8_t totalBits = uint8_t(sizeof(x) * 8);
+        Power2 p;
+        p.m_log2 = totalBits - std::countl_zero(x);
+        return p;
+    }
+
+    /// Creates exactly 2^log2
+    constexpr static Power2 from_log2(uint8_t log2)
+    {
+        Power2 p;
+        p.m_log2 = log2;
+        return p;
+    }
+
+    /// Saturación en conversión a valor numérico
+    constexpr byte_size value() const
+    {
+        if (m_log2 >= 64)
+            return std::numeric_limits<byte_size>::max();
+        else
+            return byte_size(1) << m_log2;
+    }
+
+    constexpr uint8_t log2() const { return m_log2; }
+
+    /// Relative level: log2(this) - log2(base)
+    constexpr int relative_level(const Power2& base) const { return int(m_log2) - int(base.m_log2); }
+
+    constexpr Power2 parent() const { return Power2(m_log2 > 0 ? m_log2 - 1 : 0); }
+    constexpr Power2 child() const { return Power2(m_log2 + 1); }
+
+    constexpr Power2 operator<<(int shift) const { return Power2(uint8_t(m_log2 + shift)); }
+    constexpr Power2 operator>>(int shift) const
+    {
+        return Power2(uint8_t(m_log2 > shift ? m_log2 - shift : 0));
+    }
+
+    constexpr Power2 operator*(const Power2& other) const
+    {
+        return Power2(uint8_t(m_log2 + other.m_log2));
+    }
+    constexpr Power2 operator/(const Power2& other) const
+    {
+        return Power2(uint8_t(m_log2 > other.m_log2 ? m_log2 - other.m_log2 : 0));
+    }
+
+    constexpr Power2& operator*=(const Power2& other)
+    {
+        m_log2 = uint8_t(m_log2 + other.m_log2);
+        return *this;
+    }
+    constexpr Power2& operator/=(const Power2& other)
+    {
+        m_log2 = uint8_t(m_log2 > other.m_log2 ? m_log2 - other.m_log2 : 0);
+        return *this;
+    }
+
+    constexpr auto operator<=>(const Power2&) const = default;
+
+private:
+    constexpr Power2(uint8_t log2)
+        : m_log2(log2)
+    {
+    }
+    uint8_t m_log2 = 0;
+};
+
 } // namespace coll

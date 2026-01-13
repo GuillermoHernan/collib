@@ -56,9 +56,9 @@ static LeanTreeAllocator::Parameters validateAndCorrectParams(LeanTreeAllocator:
 {
     const uint8_t minLevels = 6;
 
-    params.basicBlockSize = std::max(params.basicBlockSize, align::from_bytes(4));
+    params.basicBlockSize = std::max(params.basicBlockSize, Power2::from_value(4));
 
-    const align minTotalSize = align::from_log2(params.basicBlockSize.log2Size() + minLevels);
+    const Power2 minTotalSize =  params.basicBlockSize << minLevels;
     params.totalSize = std::max(params.totalSize, minTotalSize);
     params.maxAllocSize = std::max(params.maxAllocSize, minTotalSize);
     params.maxAllocSize = std::min(params.maxAllocSize, params.totalSize);
@@ -67,18 +67,18 @@ static LeanTreeAllocator::Parameters validateAndCorrectParams(LeanTreeAllocator:
     return params;
 }
 
-static align calculateTotalBasicBlocks(const LeanTreeAllocator::Parameters& params)
+static Power2 calculateTotalBasicBlocks(const LeanTreeAllocator::Parameters& params)
 {
-    return align::from_log2(params.totalSize.log2Size() - params.basicBlockSize.log2Size());
+    return params.totalSize / params.basicBlockSize;
 }
 
-static byte_size calculateLevelsTotalSize(const byte_size totalBasicBlocks, const uint8_t levels)
+static byte_size calculateLevelsTotalSize(const Power2 totalBasicBlocks, const uint8_t levels)
 {
     const align bitLevelsAlign = align::of<unsigned>();
     const align upperLevelsAlign = align::of<uint8_t>();
 
     byte_size bitLevelsSize = 0;
-    byte_size curLevelSize = totalBasicBlocks / 8;
+    byte_size curLevelSize = totalBasicBlocks.value() / 8;
     uint8_t level;
 
     for (level = 0; level < 5; ++level, curLevelSize /= 2)
@@ -88,7 +88,7 @@ static byte_size calculateLevelsTotalSize(const byte_size totalBasicBlocks, cons
     }
 
     byte_size upperLevelsSize = 0;
-    curLevelSize = totalBasicBlocks >> level;
+    curLevelSize = totalBasicBlocks.value() >> level;
     for (; level < levels; ++level, curLevelSize /= 2)
     {
         curLevelSize = std::max(curLevelSize, byte_size(1));
@@ -101,7 +101,7 @@ static byte_size calculateLevelsTotalSize(const byte_size totalBasicBlocks, cons
 static byte_size metaDataSize(
     const LeanTreeAllocator::Parameters& params,
     uint8_t levels,
-    byte_size totalBasicBlocks,
+    Power2 totalBasicBlocks,
     byte_size headerSize
 )
 {
@@ -128,7 +128,7 @@ static uint8_t* setupLevel(uint8_t* levelPtr, uint8_t index, byte_size totalBasi
     return levelPtr + size;
 }
 
-static void setupLevels(uint8_t** levels, uint8_t nLevels, byte_size totalBasicBlocks)
+static void setupLevels(uint8_t** levels, uint8_t nLevels, Power2 totalBasicBlocks)
 {
     uint8_t* nextLevelPtr = reinterpret_cast<uint8_t*>(levels + nLevels);
     kHeaderAlign.apply(nextLevelPtr);
@@ -136,18 +136,18 @@ static void setupLevels(uint8_t** levels, uint8_t nLevels, byte_size totalBasicB
     for (uint8_t i = 0; i < nLevels; ++i)
     {
         levels[i] = nextLevelPtr;
-        nextLevelPtr = setupLevel(nextLevelPtr, i, totalBasicBlocks);
+        nextLevelPtr = setupLevel(nextLevelPtr, i, totalBasicBlocks.value());
     }
 }
 
-static void initTopLevel(uint8_t* levelData, uint8_t levelIndex, align topLevelSize)
+static void initTopLevel(uint8_t* levelData, uint8_t levelIndex, Power2 topLevelSize)
 {
-    memset(levelData, levelIndex, topLevelSize.bytes());
+    memset(levelData, levelIndex, topLevelSize.value());
 }
 
 static uint8_t levelCount(const LeanTreeAllocator::Parameters& params)
 {
-    return params.maxAllocSize.log2Size() - params.basicBlockSize.log2Size();
+    return (params.maxAllocSize / params.basicBlockSize).log2();
 }
 
 LeanTreeAllocator::LeanTreeAllocator(IAllocator& backing, const Parameters& params_)
@@ -158,45 +158,45 @@ LeanTreeAllocator::LeanTreeAllocator(IAllocator& backing, const Parameters& para
 
     // 2. Calculate layout
     const uint8_t nLevels = levelCount(params);
-    const align totalBasicBlocks = calculateTotalBasicBlocks(params);
-    const byte_size metaSize = metaDataSize(params, nLevels, totalBasicBlocks.bytes(), sizeof(SHeader));
+    const Power2 totalBasicBlocks = calculateTotalBasicBlocks(params);
+    const byte_size metaSize = metaDataSize(params, nLevels, totalBasicBlocks, sizeof(SHeader));
 
     // 3. Single memory block allocated
-    auto [buffer, _] = m_backing.alloc(params.totalSize.bytes(), params.a);
+    auto [buffer, _] = m_backing.alloc(params.totalSize.value(), params.a);
     if (buffer == nullptr)
         throw std::bad_alloc();
 
     // 4. Layout & setup
     uint8_t* rawMemory = reinterpret_cast<uint8_t*>(buffer);
     setupHeader(rawMemory, params);
-    setupLevels(m_header->levels, nLevels, totalBasicBlocks.bytes());
+    setupLevels(m_header->levels, nLevels, totalBasicBlocks);
 
     // 5. Initial state. Just top level is enough.
-    align topLevelSize = align::from_log2(params.totalSize.log2Size() - params.maxAllocSize.log2Size());
+    Power2 topLevelSize = topLevelBlocksCount();
     initTopLevel(m_header->levels[nLevels - 1], nLevels, topLevelSize);
 
     // 6. Mark metadata allocated.
     allocMetadata(metaSize);
 
     // 7. Init stats
-    m_stats.totalBytes = params.totalSize.bytes();
+    m_stats.totalBytes = params.totalSize.value();
 }
 
 SAllocResult LeanTreeAllocator::alloc(byte_size bytes, align a)
 {
     const Parameters& params = m_header->params;
 
-    align correctedSize = align::from_bytes(bytes);
+    Power2 correctedSize = Power2::from_value(bytes);
     correctedSize = std::max(correctedSize, params.basicBlockSize);
 
     if (correctedSize > params.maxAllocSize)
         return {nullptr, 0};
 
-    const SAllocResult result = topLevelAlloc(correctedSize);
+    const SAllocResult result = topLevelAlloc(correctedSize / params.basicBlockSize);
     if (result.buffer != nullptr)
     {
-        AllocLogger::instance().alloc(*this, bytes, correctedSize.bytes(), result.buffer, a);
-        m_stats.bytesUsed += correctedSize.bytes();
+        AllocLogger::instance().alloc(*this, bytes, correctedSize.value(), result.buffer, a);
+        m_stats.bytesUsed += correctedSize.value();
     }
 
     return result;
@@ -210,9 +210,9 @@ byte_size LeanTreeAllocator::tryExpand(byte_size bytes, void*)
     return 0;
 }
 
-SAllocResult LeanTreeAllocator::topLevelAlloc(align size)
+SAllocResult LeanTreeAllocator::topLevelAlloc(Power2 basicBlocks)
 {
-    const count_t nBlocks = (count_t)topLevelBlocksCount().bytes();
+    const count_t nBlocks = (count_t)topLevelBlocksCount().value();
     const uint8_t level = topLevel();
     const uint8_t* levelData = m_header->levels[level];
     uint8_t selectedLfb = kLargestFreeBlockMask;
@@ -222,7 +222,7 @@ SAllocResult LeanTreeAllocator::topLevelAlloc(align size)
     {
         const uint8_t lfb = levelData[i] & kLargestFreeBlockMask;
 
-        if (lfb < selectedLfb && lfb >= size.log2Size())
+        if (lfb < selectedLfb && lfb >= basicBlocks.log2())
         {
             selectedIndex = i;
             selectedLfb = lfb;
@@ -233,23 +233,23 @@ SAllocResult LeanTreeAllocator::topLevelAlloc(align size)
         return {nullptr, 0};
 
     // uint8_t* blockStart = m_header->data + (byte_size(selectedIndex) << level);
-    uint8_t* allocatedBlock = allocAtLevel(level, selectedIndex, size.log2Size());
+    uint8_t* allocatedBlock = allocAtLevel(level, selectedIndex, basicBlocks);
 
-    return {allocatedBlock, size.bytes()};
+    return { allocatedBlock, (basicBlocks * m_header->params.basicBlockSize).value() };
 }
 
 uint8_t LeanTreeAllocator::topLevel() const { return levelCount(m_header->params) - 1; }
 
-align LeanTreeAllocator::topLevelBlocksCount() const
+Power2 LeanTreeAllocator::topLevelBlocksCount() const
 {
     const auto& params = m_header->params;
-    return align::from_log2(params.totalSize.log2Size() - params.maxAllocSize.log2Size());
+    return params.totalSize / params.maxAllocSize;
 }
 
-uint8_t* LeanTreeAllocator::allocAtLevel(uint8_t level, count_t index, uint8_t logSize)
+uint8_t* LeanTreeAllocator::allocAtLevel(uint8_t level, count_t index, Power2 basicBlocks)
 {
     // Needs the full block?
-    if (logSize == level)
+    if (basicBlocks.log2() == level)
     {
         if (level > 4)
         {
@@ -260,7 +260,7 @@ uint8_t* LeanTreeAllocator::allocAtLevel(uint8_t level, count_t index, uint8_t l
         }
         else
         {
-            setUsedBits(index << level, logSize);
+            setUsedBits(index << level, basicBlocks);
             if (level > 0)
                 setSolidBit(level, index);
         }
@@ -269,14 +269,14 @@ uint8_t* LeanTreeAllocator::allocAtLevel(uint8_t level, count_t index, uint8_t l
     else
     {
         preSplitCheck(level, index);
-        const count_t childIndex = selectFittingChild(level, index, logSize);
-        uint8_t* result = allocAtLevel(level - 1, (index * 2) + childIndex, logSize);
+        const count_t childIndex = selectFittingChild(level, index, basicBlocks);
+        uint8_t* result = allocAtLevel(level - 1, (index * 2) + childIndex, basicBlocks);
         updateLargestFreeBlock(level, index);
         return result;
     }
 }
 
-count_t LeanTreeAllocator::selectFittingChild(uint8_t level, count_t index, uint8_t logSize)
+count_t LeanTreeAllocator::selectFittingChild(uint8_t level, count_t index, Power2 basicBlocks)
 {
     uint8_t leftLfb;
     uint8_t rightLfb;
@@ -293,11 +293,11 @@ count_t LeanTreeAllocator::selectFittingChild(uint8_t level, count_t index, uint
         rightLfb = lowerLevelsLfb(level - 1, index * 2 + 1);
     }
 
-    if (leftLfb <= rightLfb && leftLfb >= logSize)
+    if (leftLfb <= rightLfb && leftLfb >= basicBlocks.log2())
         return 0;
-    else if (rightLfb < logSize)
+    else if (rightLfb < basicBlocks.log2())
     {
-        assert(leftLfb >= logSize);
+        assert(leftLfb >= basicBlocks.log2());
         return 0;
     }
     else
@@ -345,11 +345,11 @@ void LeanTreeAllocator::preSplitCheck(uint8_t level, count_t index)
     }
 }
 
-void LeanTreeAllocator::setUsedBits(count_t index, uint8_t logSize)
+void LeanTreeAllocator::setUsedBits(count_t index, Power2 size)
 {
     // Level zero contains the used / free information of individual basic blocks. 1 bit per block
     unsigned* level0 = reinterpret_cast<unsigned*>(m_header->levels[0]);
-    setBits(level0, index, size_t(1) << logSize);
+    setBits(level0, index, size.value());
 }
 
 void LeanTreeAllocator::setSolidBit(uint8_t level, count_t index)
@@ -416,13 +416,13 @@ void LeanTreeAllocator::setupHeader(uint8_t* rawMemory, const Parameters& params
 void LeanTreeAllocator::allocMetadata(byte_size size)
 {
     const auto& params = m_header->params;
-    const align correctedSize = align::from_bytes(size);
+    const Power2 correctedSize = Power2::from_value(size);
     const uint8_t nLevels = levelCount(params);
 
-    const uint8_t log2Bytes = std::max(correctedSize.log2Size(), params.basicBlockSize.log2Size());
-    const uint8_t log2BasicBlocks = log2Bytes - params.basicBlockSize.log2Size();
+    const Power2 bytes = std::max(correctedSize, params.basicBlockSize);
+    const Power2 basicBlocks = bytes / params.basicBlockSize;
 
-    uint8_t* buffer = allocAtLevel(nLevels-1, 0, log2BasicBlocks);
+    uint8_t* buffer = allocAtLevel(nLevels-1, 0, basicBlocks);
     assert(buffer == m_header->data);
 }
 

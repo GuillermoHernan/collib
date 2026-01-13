@@ -37,11 +37,9 @@ class LeanTreeAllocator : public IAllocator
 public:
     struct Parameters
     {
-        // Note: that align is used for sizes because they need to be power of two.
-        // TODO: Write a specific class for power of two number.
-        align basicBlockSize = align::from_bytes(16);
-        align totalSize = align::from_bytes(64 * 1024);
-        align maxAllocSize = align::from_bytes(8 * 1024);
+        Power2 basicBlockSize = Power2::from_value(16);
+        Power2 totalSize = Power2::from_value(64 * 1024);
+        Power2 maxAllocSize = Power2::from_value(8 * 1024);
         align a = align::system();
     };
 
@@ -79,14 +77,14 @@ private:
         Parameters params;
     };
 
-    SAllocResult topLevelAlloc(align size);
-    align topLevelBlocksCount() const;
+    SAllocResult topLevelAlloc(Power2 basicBlocks);
+    Power2 topLevelBlocksCount() const;
     uint8_t topLevel() const;
-    uint8_t* allocAtLevel(uint8_t level, count_t index, uint8_t logSize);
-    count_t selectFittingChild(uint8_t level, count_t index, uint8_t logSize);
+    uint8_t* allocAtLevel(uint8_t level, count_t index, Power2 basicBlocks);
+    count_t selectFittingChild(uint8_t level, count_t index, Power2 basicBlocks);
 
     void preSplitCheck(uint8_t level, count_t index);
-    void setUsedBits(count_t index, uint8_t logSize);
+    void setUsedBits(count_t index, Power2 size);
     void setSolidBit(uint8_t level, count_t index);
     count_t lowerLevelsLfb(uint8_t level, count_t index) const;
     void updateLargestFreeBlock(uint8_t level, count_t index);
