@@ -63,7 +63,7 @@ public:
     void free(void*) override;
     ////////
 
-    Stats stats() const { return m_stats; }
+    Stats stats() const;
     Parameters params() const { return m_header->params; }
 
     bool validate() const;
@@ -88,7 +88,8 @@ private:
     void preSplitCheck(uint8_t level, count_t index);
     void setUsedBits(count_t index, Power2 size);
     void setSolidBit(uint8_t level, count_t index);
-    count_t lowerLevelsLfb(uint8_t level, count_t index) const;
+    byte_size lowerLevelLfb(uint8_t level, count_t index) const;
+    byte_size byteLevelLfb(uint8_t level, count_t index)const;
     void updateLargestFreeBlock(uint8_t level, count_t index);
 
     void setupHeader(uint8_t* rawMemory, const Parameters& params);
