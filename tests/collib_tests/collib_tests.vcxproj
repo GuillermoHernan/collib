@@ -20,6 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="allocators\arena_allocator_tests.cpp" />
+    <ClCompile Include="allocators\lean_tree_allocator_tests.cpp" />
     <ClCompile Include="allocators\stack_allocator_tests.cpp" />
     <ClCompile Include="btree_tests.cpp" />
     <ClCompile Include="collib_tests_main.cpp">

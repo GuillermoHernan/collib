@@ -13,6 +13,7 @@
     <ClCompile Include="collib_types_tests.cpp" />
     <ClCompile Include="allocators\arena_allocator_tests.cpp" />
     <ClCompile Include="allocators\stack_allocator_tests.cpp" />
+    <ClCompile Include="allocators\lean_tree_allocator_tests.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch-collib-tests.h" />

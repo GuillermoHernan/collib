@@ -183,6 +183,8 @@ LeanTreeAllocator::LeanTreeAllocator(IAllocator& backing, const Parameters& para
     m_stats.totalBytes = params.totalSize.value();
 }
 
+LeanTreeAllocator::~LeanTreeAllocator() { m_backing.free(m_header->data); }
+
 SAllocResult LeanTreeAllocator::alloc(byte_size bytes, align a)
 {
     const Parameters& params = m_header->params;
@@ -235,7 +237,8 @@ void LeanTreeAllocator::free(void* buffer)
     if (offset % params.basicBlockSize != 0)
         error("Bad alignment");
 
-    freeAtBlock(count_t(offset / params.basicBlockSize), topLevel());
+    const Power2 freed = freeAtBlock(count_t(offset / params.basicBlockSize), topLevel());
+    m_stats.bytesUsed -= (freed * params.basicBlockSize).value();
 }
 
 SAllocResult LeanTreeAllocator::topLevelAlloc(Power2 basicBlocks)
@@ -330,6 +333,27 @@ count_t LeanTreeAllocator::selectFittingChild(uint8_t level, count_t index, Powe
     }
     else
         return 1;
+}
+
+bool LeanTreeAllocator::getBitLevelValue(uint8_t level, count_t index) const
+{
+    assert(level <= 4);
+
+    unsigned* bits = reinterpret_cast<unsigned*>(m_header->levels[level]);
+
+    return getBit(bits, index);
+}
+
+void LeanTreeAllocator::setBitLevelValue(uint8_t level, count_t index, bool value)
+{
+    assert(level <= 4);
+
+    unsigned* bits = reinterpret_cast<unsigned*>(m_header->levels[level]);
+
+    if (value)
+        setBits(bits, index, 1);
+    else
+        clearBits(bits, index, 1);
 }
 
 void LeanTreeAllocator::preSplitCheck(uint8_t level, count_t index)
@@ -454,20 +478,21 @@ void LeanTreeAllocator::allocMetadata(byte_size size)
     assert(buffer == m_header->data);
 }
 
-void LeanTreeAllocator::freeAtBlock(count_t basicBlockIndex, uint8_t level)
+Power2 LeanTreeAllocator::freeAtBlock(count_t basicBlockIndex, uint8_t level)
 {
     const count_t blockIndex = basicBlockIndex >> level;
-    
+
     if (level == 0)
     {
         setBitLevelValue(0, basicBlockIndex, false);
+        return Power2::from_log2(level);
     }
     else if (level < 5)
     {
         const bool solid = getBitLevelValue(level, blockIndex);
 
         if (!solid)
-            freeAtBlock(basicBlockIndex, level - 1);
+            return freeAtBlock(basicBlockIndex, level - 1);
         else
         {
             if (blockIndex % Power2::from_log2(level) != 0)
@@ -475,7 +500,8 @@ void LeanTreeAllocator::freeAtBlock(count_t basicBlockIndex, uint8_t level)
 
             unsigned* level0 = reinterpret_cast<unsigned*>(m_header->levels[0]);
             setBits(level0, basicBlockIndex, byte_size(1) << level);
-        }        
+            return Power2::from_log2(level);
+        }
     }
     else
     {
@@ -487,11 +513,11 @@ void LeanTreeAllocator::freeAtBlock(count_t basicBlockIndex, uint8_t level)
                 throw std::runtime_error("Pointer does not address the start of an allocated block");
 
             levelData[blockIndex] = level;
+            return Power2::from_log2(level);
         }
         else
-            freeAtBlock(basicBlockIndex, level - 1);
+            return freeAtBlock(basicBlockIndex, level - 1);
     }
 }
-
 
 } // namespace coll

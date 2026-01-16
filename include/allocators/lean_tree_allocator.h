@@ -93,7 +93,7 @@ private:
 
     void setupHeader(uint8_t* rawMemory, const Parameters& params);
     void allocMetadata(byte_size size);
-    void freeAtBlock(count_t basicBlockIndex, uint8_t level);
+    Power2 freeAtBlock(count_t basicBlockIndex, uint8_t level);
 
     IAllocator& m_backing;
     SHeader* m_header;
