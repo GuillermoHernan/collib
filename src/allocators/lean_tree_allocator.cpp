@@ -247,7 +247,7 @@ void LeanTreeAllocator::free(void* buffer)
 
     // Do not let release the metadata!
     if (offset < m_stats.metaDataSize)
-        error("LeanTreeAllocator: Trying to release meta data");
+        error("LeanTreeAllocator: Trying to release metadata");
 
     // Check that is within the managed area
     if (offset > params.totalSize.value())
@@ -300,16 +300,19 @@ bool LeanTreeAllocator::canCoalesce(count_t levelIndex, uint8_t level) const
 
 void LeanTreeAllocator::coalesce(count_t levelIndex, uint8_t level)
 {
-    if (!canCoalesce(levelIndex, level))
-        return;
-
     if (level < kBitLevelCount)
     {
         // Just mark as solid. It is already marked as free at level 0.
-        setBitLevelValue(level, levelIndex, true);
+        if (canCoalesce(levelIndex, level))
+            setBitLevelValue(level, levelIndex, true);
     }
     else
-        m_header->levels[level][levelIndex] = uint8_t(ByteNode::FreeSolid);
+    {
+        if (canCoalesce(levelIndex, level))
+            m_header->levels[level][levelIndex] = uint8_t(ByteNode::FreeSolid);
+        else
+            updateLargestFreeBlock(level, levelIndex);
+    }
 }
 
 void LeanTreeAllocator::dumpSolidBlocks(uint8_t level, count_t index, char separator, std::ostream& csv)
@@ -680,12 +683,12 @@ Power2 LeanTreeAllocator::freeAtBlock(count_t basicBlockIndex, uint8_t level)
 
         if (levelData[blockIndex] == uint8_t(ByteNode::FullSolid))
         {
-            if (blockIndex % Power2::from_log2(level) != 0)
+            if (basicBlockIndex % Power2::from_log2(level) != 0)
                 throw std::runtime_error(
                     "LeanTreeAllocator: Pointer does not address the start of an allocated block"
                 );
 
-            levelData[blockIndex] = level;
+            levelData[blockIndex] = uint8_t(ByteNode::FreeSolid);
             return Power2::from_log2(level);
         }
         else
@@ -841,7 +844,7 @@ bool LeanTreeAllocator::validateByteNode(uint8_t level, count_t index, std::ostr
     }
     else
     {
-        log << "[ERROR] Unexpected ByteNode value (0x" << std::hex << nodeValue << std::dec << ") at";
+        log << "[ERROR] Unexpected ByteNode value (0x" << std::hex << unsigned(nodeValue) << std::dec << ") at";
         reportBlockLocation(level, index, log) << "\n";
         ok = false;
     }

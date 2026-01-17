@@ -120,6 +120,24 @@ TEST_CASE("LeanTreeAllocator alloc and free", "[allocator][lean_tree][alloc]")
         REQUIRE(b.buffer != nullptr);
         CHECK(a.buffer != b.buffer);
     }
+
+    SECTION("Allocate large blocks")
+    {
+        const size_t allocSize = 2048;
+        auto a = allocator.alloc(allocSize, align::system());
+        auto b = allocator.alloc(allocSize, align::system());
+        REQUIRE(a.buffer != nullptr);
+        REQUIRE(b.buffer != nullptr);
+        CHECK(a.buffer != b.buffer);
+        CHECK(allocator.stats().bytesUsed >= allocSize * 2);
+        CHECK(allocator.validate(std::cerr));
+
+        allocator.free(a.buffer);
+        CHECK(allocator.validate(std::cerr));
+        allocator.free(b.buffer);
+        CHECK(allocator.stats().bytesUsed == 0);
+        CHECK(allocator.validate(std::cerr));
+    }
 }
 
 // -------------------------------------------------------------
