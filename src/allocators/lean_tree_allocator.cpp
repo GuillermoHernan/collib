@@ -149,7 +149,7 @@ static void initTopLevel(uint8_t* levelData, Power2 topLevelSize)
 
 static uint8_t levelCount(const LeanTreeAllocator::Parameters& params)
 {
-    return (params.maxAllocSize / params.basicBlockSize).log2();
+    return (params.maxAllocSize / params.basicBlockSize).log2() + 1;
 }
 
 LeanTreeAllocator::LeanTreeAllocator(IAllocator& backing, const Parameters& params_)
@@ -227,7 +227,7 @@ void LeanTreeAllocator::free(void* buffer)
     const size_t offset = blockPtr - m_header->data;
 
     // Do not let release the metadata!
-    if (offset == 0)
+    if (offset < m_stats.metaDataSize)
         error("LeanTreeAllocator: Trying to release meta data");
 
     // Check that is within the managed area
@@ -317,7 +317,7 @@ uint8_t* LeanTreeAllocator::allocAtLevel(uint8_t level, count_t index, Power2 ba
             if (level > 0)
                 setSolidBit(level, index);
         }
-        return m_header->data + (index << count_t(level));
+        return m_header->data + (index << count_t(level + m_header->params.basicBlockSize.log2()));
     }
     else
     {
@@ -523,7 +523,7 @@ void LeanTreeAllocator::allocMetadata(byte_size size)
 
     uint8_t* buffer = allocAtLevel(nLevels - 1, 0, basicBlocks);
     assert(buffer == m_header->data);
-    m_stats.bytesUsed += correctedSize.value();
+    m_stats.metaDataSize = correctedSize.value();
 }
 
 Power2 LeanTreeAllocator::freeAtBlock(count_t basicBlockIndex, uint8_t level)
@@ -543,7 +543,7 @@ Power2 LeanTreeAllocator::freeAtBlock(count_t basicBlockIndex, uint8_t level)
             return freeAtBlock(basicBlockIndex, level - 1);
         else
         {
-            if (blockIndex % Power2::from_log2(level) != 0)
+            if (basicBlockIndex % Power2::from_log2(level) != 0)
                 throw std::runtime_error(
                     "LeanTreeAllocator: Pointer does not address the start of an allocated block"
                 );

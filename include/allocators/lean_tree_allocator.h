@@ -48,6 +48,7 @@ public:
         byte_size totalBytes = 0;
         byte_size bytesUsed = 0;
         byte_size largestFreeBlock = 0;
+        byte_size metaDataSize = 0;
     };
 
     struct Limits
