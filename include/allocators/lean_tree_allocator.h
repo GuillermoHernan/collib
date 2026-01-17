@@ -25,11 +25,73 @@
 #include "../allocator.h"
 #include <iosfwd>
 
-/**
- * @brief LeanTreeAllocator: Allocator based un Buddy Allocator. With very low fixed memory overhead.
- *
- */
+ /**
+  * @brief LeanTreeAllocator: Buddy allocator with ultra-low fixed memory overhead
+  *
+  * DESIGN:
+  *  Hierarchical buddy system using compact tree representation:
+  *  - Levels 0-4: Bit-packed
+  *  - Levels 5+: Byte-packed nodes (FreeSolid/FullSolid/Partial+log2 LFB)
+  *  Single backing buffer with inline header + metadata + data
+  *
+  * ALLOCATION POLICY:
+  *  - Best-fit Largest Free Block (LFB) search from top level (selects smallest sufficient block)
+  *  - Recursive splitting with pre-split validation (O(log N) worst case)
+  *  - Automatic coalescing on free (checks adjacent blocks, promotes solid free blocks)
+  *  - All allocations power-of-2 rounded up to basicBlockSize minimum
+  *
+  * USE CASES:
+  *  - Fixed-size memory pools with small-to-medium power-of-2 allocations
+  *  - Object pools, particle systems, render data (16B - 8KB allocations)
+  *  - Embedded/real-time systems requiring minimal metadata overhead
+  *  - Arena replacement with good locality characteristics
+  *
+  * STRENGTHS:
+  *  - Fixed, small overhead: ~4 bits/basicBlock (typical) regardless of fragmentation state
+  *  - No external fragmentation: power-of-2 buddy system properties
+  *  - Automatic coalescing of adjacent free blocks
+  *  - Comprehensive validation and debugging facilities
+  *  - Predictable O(log N) response time.
+  *  - Cache-friendly single-buffer design
+  *
+  * LIMITATIONS:
+  *  - Power-of-2 internal fragmentation (25% average for random sizes)
+  *  - No tryExpand() support (returns 0)
+  *  - Single backing buffer: fixed capacity, OOM = hard failure
+  *  - Thread-unsafe
+  *
+  * CONFIGURATION:
+  *  LeanTreeAllocator alloc(backing, {.basicBlockSize = 16, .totalSize = 64_KB, .maxAllocSize = 8_KB});
+  *
+  *  basicBlockSize: Minimum allocation granularity (4B min, 16B default). All allocs ≥ this size.
+  *  totalSize:      Total arena capacity (≥ basicBlockSize×2⁶). Single backing allocation.
+  *  maxAllocSize:   Largest single allocation (≤ totalSize, ≥ totalSize/64). Determines tree depth and
+  *                     number of blocks at top level.
+  *  a:              Backing buffer alignment (system default).
+  *
+  *  Auto-corrected: totalSize ≥ basicBlockSize×64, maxAllocSize ∈ [totalSize/64, totalSize]
+  *
+  * DEBUG:
+  *  - validate(stream) → recursive tree validation + stats consistency
+  *  - dumpToCsv(stream) → "Used;Pointer;Offset;BasicBlocks;Bytes;Level" format
+  *  - stats() → totalBytes/bytesUsed/largestFreeBlock/metaDataSize
+  *
+  * TESTED:
+  *  Construction/params validation, alloc/free cycles, OOM handling, alignment errors,
+  *  fragmentation/reuse patterns, full exhaustion + coalescing, metadata protection,
+  *  recursive validation edge cases.
+  *
+  * PERFORMANCE:
+  *  - Alloc: O(log N) best-fit LFB search + recursive split
+  *  - Free: O(log N) coalescing traversal
+  *  - Metadata: ~4 bits/basicBlock + minimal bytes/largeBlock
+  * 
+  * ACRONYMS AND DEFINITIONS:
+  *   LFB: Largest Free Block
+  *   OOM: Out-of-Memory
+  *   CSV: Comma Separated Values (text file format)
 
+  */
 namespace coll
 {
 class LeanTreeAllocator : public IAllocator
