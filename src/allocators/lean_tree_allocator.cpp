@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <assert.h>
+#include <iostream>
 #include <stdexcept>
 
 namespace coll
@@ -242,7 +243,7 @@ void LeanTreeAllocator::free(void* buffer)
     m_stats.bytesUsed -= (freed * params.basicBlockSize).value();
 }
 
-LeanTreeAllocator::Stats LeanTreeAllocator::stats() const 
+LeanTreeAllocator::Stats LeanTreeAllocator::stats() const
 {
     // Calculate largest free block.
     const count_t nBlocks = (count_t)topLevelBlocksCount().value();
@@ -260,9 +261,66 @@ LeanTreeAllocator::Stats LeanTreeAllocator::stats() const
     Stats result(m_stats);
     result.largestFreeBlock = selectedLfb;
 
-    return m_stats; 
+    return m_stats;
 }
 
+void LeanTreeAllocator::dumpSolidBlocks(uint8_t level, count_t index, char separator, std::ostream& csv)
+    const
+{
+    bool isSolid = false;
+    bool isUsed = false;
+
+    if (level < kBitLevelCount)
+    {
+        isSolid = getBitLevelValue(level, index);
+        isUsed = getBitLevelValue(0, index << level);
+    }
+    else
+    {
+        const uint8_t node = m_header->levels[level][index];
+        const uint8_t solidMask = uint8_t(ByteNode::PartialBit) | uint8_t(ByteNode::SolidBit);
+
+        isSolid = (node & solidMask) == 0;
+        isUsed = (node & uint8_t(ByteNode::UsedBit)) != 0;
+    }
+
+    if (isSolid)
+    {
+        const Power2 basicSize = m_header->params.basicBlockSize;
+        const Power2 blockSize = Power2::from_log2(level);
+        const byte_size bytes = (blockSize * basicSize).value();
+        const uint8_t* ptr = m_header->data + (index << (level + basicSize.log2()));
+        const uintptr_t offset(ptr - m_header->data);
+        const char* blockType = "FREE";
+
+        if (isUsed)
+            blockType = (offset == 0) ? "META" : "USED";
+
+        csv << blockType;
+        csv << separator << "0x" << std::hex << uintptr_t(ptr);
+        csv << separator << "0x" << offset;
+        csv << separator << std::dec << blockSize.value();
+        csv << separator << bytes;
+        csv << separator << uint32_t(level);
+        csv << std::endl;
+    }
+    else
+    {
+        dumpSolidBlocks(level - 1, index * 2 + 0, separator, csv);
+        dumpSolidBlocks(level - 1, index * 2 + 1, separator, csv);
+    }
+}
+
+void LeanTreeAllocator::dumpToCsv(std::ostream& csv, char separator) const
+{
+    csv << "Used;Pointer;Offset;Basic Blocks;Bytes;Level" << std::endl;
+
+    const uint8_t topLevelIdx = topLevel();
+    const count_t blocksInTopLevel = (count_t)topLevelBlocksCount().value();
+
+    for (count_t root = 0; root < blocksInTopLevel; root++)
+        dumpSolidBlocks(topLevelIdx, root, separator, csv);
+}
 
 SAllocResult LeanTreeAllocator::topLevelAlloc(Power2 basicBlocks)
 {
@@ -381,7 +439,13 @@ void LeanTreeAllocator::setBitLevelValue(uint8_t level, count_t index, bool valu
 
 void LeanTreeAllocator::preSplitCheck(uint8_t level, count_t index)
 {
-    if (level >= kBitLevelCount)
+    if (level < kBitLevelCount)
+    {
+        // Clear solid bit. Note that for level zero it will set the block as 'free'. But it should
+        // already be free.
+        setBitLevelValue(level, index, false);
+    }
+    else
     {
         uint8_t* parentMetadata = m_header->levels[level] + index;
         assert(*parentMetadata != uint8_t(ByteNode::FullSolid));
@@ -549,7 +613,7 @@ Power2 LeanTreeAllocator::freeAtBlock(count_t basicBlockIndex, uint8_t level)
                 );
 
             unsigned* level0 = reinterpret_cast<unsigned*>(m_header->levels[0]);
-            setBits(level0, basicBlockIndex, byte_size(1) << level);
+            clearBits(level0, basicBlockIndex, byte_size(1) << level);
             return Power2::from_log2(level);
         }
     }

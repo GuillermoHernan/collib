@@ -68,7 +68,7 @@ public:
     Parameters params() const { return m_header->params; }
 
     bool validate() const;
-    // void dumpToCsv(std::ostream& csv, char separator = ';') const;
+    void dumpToCsv(std::ostream& csv, char separator = ';') const;
 
 private:
     struct SHeader
@@ -83,19 +83,21 @@ private:
     uint8_t topLevel() const;
     uint8_t* allocAtLevel(uint8_t level, count_t index, Power2 basicBlocks);
     count_t selectFittingChild(uint8_t level, count_t index, Power2 basicBlocks);
-    bool getBitLevelValue(uint8_t level, count_t index)const;
+    bool getBitLevelValue(uint8_t level, count_t index) const;
     void setBitLevelValue(uint8_t level, count_t index, bool value);
 
     void preSplitCheck(uint8_t level, count_t index);
     void setUsedBits(count_t index, Power2 size);
     void setSolidBit(uint8_t level, count_t index);
     byte_size lowerLevelLfb(uint8_t level, count_t index) const;
-    byte_size byteLevelLfb(uint8_t level, count_t index)const;
+    byte_size byteLevelLfb(uint8_t level, count_t index) const;
     void updateLargestFreeBlock(uint8_t level, count_t index);
 
     void setupHeader(uint8_t* rawMemory, const Parameters& params);
     void allocMetadata(byte_size size);
     Power2 freeAtBlock(count_t basicBlockIndex, uint8_t level);
+
+    void dumpSolidBlocks(uint8_t level, count_t index, char separator, std::ostream& csv) const;
 
     IAllocator& m_backing;
     SHeader* m_header;

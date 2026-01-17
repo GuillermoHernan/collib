@@ -24,6 +24,7 @@
 #include "allocators/lean_tree_allocator.h"
 #include <vector>
 #include <cstring>
+#include <iostream>
 
 using namespace coll;
 
@@ -91,15 +92,20 @@ TEST_CASE("LeanTreeAllocator alloc and free", "[allocator][lean_tree][alloc]")
         REQUIRE(r1.buffer != nullptr);
         auto s1 = allocator.stats();
         CHECK(s1.bytesUsed > s0.bytesUsed);
+        allocator.dumpToCsv(std::cerr);
 
         auto r2 = allocator.alloc(128, align::system());
         REQUIRE(r2.buffer != nullptr);
         auto s2 = allocator.stats();
         CHECK(s2.bytesUsed > s1.bytesUsed);
+        std::cerr << std::endl;
+        allocator.dumpToCsv(std::cerr);
 
         allocator.free(r1.buffer);
         auto s3 = allocator.stats();
         CHECK(s3.bytesUsed < s2.bytesUsed);
+        std::cerr << std::endl;
+        allocator.dumpToCsv(std::cerr);
     }
 
     SECTION("Multiple blocks have different addresses")
