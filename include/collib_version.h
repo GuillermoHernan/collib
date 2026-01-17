@@ -26,5 +26,5 @@
 
 namespace coll
 {
-constexpr std::string_view version {"0.3.0"};
+constexpr std::string_view version {"0.4.0"};
 }
