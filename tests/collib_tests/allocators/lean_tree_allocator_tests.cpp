@@ -93,7 +93,7 @@ TEST_CASE("LeanTreeAllocator alloc and free", "[allocator][lean_tree][alloc]")
         REQUIRE(r1.buffer != nullptr);
         auto s1 = allocator.stats();
         CHECK(s1.bytesUsed > s0.bytesUsed);
-        //allocator.dumpToCsv(std::cerr);
+        // allocator.dumpToCsv(std::cerr);
         REQUIRE(allocator.validate(std::cerr));
 
         auto r2 = allocator.alloc(128, align::system());
@@ -102,13 +102,13 @@ TEST_CASE("LeanTreeAllocator alloc and free", "[allocator][lean_tree][alloc]")
         CHECK(s2.bytesUsed > s1.bytesUsed);
         std::cerr << std::endl;
         REQUIRE(allocator.validate(std::cerr));
-        //allocator.dumpToCsv(std::cerr);
+        // allocator.dumpToCsv(std::cerr);
 
         allocator.free(r1.buffer);
         auto s3 = allocator.stats();
         CHECK(s3.bytesUsed < s2.bytesUsed);
         std::cerr << std::endl;
-        //allocator.dumpToCsv(std::cerr);
+        // allocator.dumpToCsv(std::cerr);
         REQUIRE(allocator.validate(std::cerr));
     }
 
@@ -161,7 +161,12 @@ TEST_CASE("LeanTreeAllocator allocation limits", "[allocator][lean_tree][limits]
 TEST_CASE("LeanTreeAllocator free error cases", "[allocator][lean_tree][free_errors]")
 {
     DummyAllocator backing;
-    LeanTreeAllocator allocator(backing);
+    LeanTreeAllocator::Parameters params;
+    params.basicBlockSize = Power2::round_up(16);
+    params.totalSize = Power2::round_up(16 * 1024);
+    params.maxAllocSize = Power2::round_up(4 * 1024);
+
+    LeanTreeAllocator allocator(backing, params);
     auto valid = allocator.alloc(64, align::system());
 
     SECTION("Freeing nullptr throws runtime_error")
@@ -179,6 +184,34 @@ TEST_CASE("LeanTreeAllocator free error cases", "[allocator][lean_tree][free_err
     {
         auto ptr = reinterpret_cast<uint8_t*>(valid.buffer);
         REQUIRE_THROWS_AS(allocator.free(ptr + 1), std::runtime_error);
+    }
+
+    SECTION("Freeing pointer to the middle of the block throws")
+    {
+        auto ptr = reinterpret_cast<uint8_t*>(valid.buffer);
+        REQUIRE_THROWS_AS(allocator.free(ptr + params.basicBlockSize.value()), std::runtime_error);
+    }
+
+    SECTION("Freeing pointer to the middle of the block throws: Large case")
+    {
+        auto largeAlloc = allocator.alloc(params.maxAllocSize.value(), align::system());
+        auto ptr = reinterpret_cast<uint8_t*>(largeAlloc.buffer);
+        REQUIRE_THROWS_AS(allocator.free(ptr + 32 * params.basicBlockSize.value()), std::runtime_error);
+    }
+
+    SECTION("Try to free within metadata area")
+    {
+        auto ptr = reinterpret_cast<uint8_t*>(valid.buffer);
+        REQUIRE_THROWS_AS(allocator.free(ptr - 512), std::runtime_error);
+    }
+
+    SECTION("Try to free after managed area")
+    {
+        auto ptr = reinterpret_cast<uint8_t*>(valid.buffer);
+        REQUIRE_THROWS_AS(
+            allocator.free(ptr + allocator.params().totalSize.value() * 2),
+            std::runtime_error
+        );
     }
 
     allocator.free(valid.buffer);
