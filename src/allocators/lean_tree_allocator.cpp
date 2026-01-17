@@ -28,6 +28,24 @@ static bool getBit(unsigned* bitData, count_t index)
     return (bitData[wordOffset] & (size_t(1) << bitOffset)) != 0;
 }
 
+static unsigned getBits(const unsigned* bitData, count_t index, size_t nBits)
+{
+    constexpr size_t wordSize = sizeof(*bitData) * 8;
+    const size_t wordOffset = index / wordSize;
+    const size_t bitOffset = index % wordSize;
+
+    if (nBits == wordSize)
+    {
+        assert(bitOffset == 0);
+        return bitData[wordOffset];
+    }
+    else
+    {
+        const unsigned mask = (unsigned(1) << nBits) - 1;
+        return (bitData[wordOffset] >> bitOffset) & mask;
+    }
+}
+
 // Note that 'unsigned' is used on purpose to let the compiler use the most appropiate word size
 // for the target architecture.
 // Endianness shouldn't be a problem, since The bitfields are always treated a word (unsigned) arrays.
@@ -264,6 +282,36 @@ LeanTreeAllocator::Stats LeanTreeAllocator::stats() const
     return m_stats;
 }
 
+bool LeanTreeAllocator::canCoalesce(count_t levelIndex, uint8_t level) const
+{
+    if (level <= kBitLevelCount)
+    {
+        const unsigned* level0 = (const unsigned*)m_header->levels[0];
+        return 0 == getBits(level0, levelIndex << level, byte_size(1) << level);
+    }
+    else
+    {
+        const uint8_t left = m_header->levels[level - 1][levelIndex * 2 + 0];
+        const uint8_t right = m_header->levels[level - 1][levelIndex * 2 + 1];
+
+        return left == right && left == uint8_t(ByteNode::FreeSolid);
+    }
+}
+
+void LeanTreeAllocator::coalesce(count_t levelIndex, uint8_t level)
+{
+    if (!canCoalesce(levelIndex, level))
+        return;
+
+    if (level < kBitLevelCount)
+    {
+        // Just mark as solid. It is already marked as free at level 0.
+        setBitLevelValue(level, levelIndex, true);
+    }
+    else
+        m_header->levels[level][levelIndex] = uint8_t(ByteNode::FreeSolid);
+}
+
 void LeanTreeAllocator::dumpSolidBlocks(uint8_t level, count_t index, char separator, std::ostream& csv)
     const
 {
@@ -331,7 +379,7 @@ SAllocResult LeanTreeAllocator::topLevelAlloc(Power2 basicBlocks)
 
     for (count_t i = 0; i < nBlocks; ++i)
     {
-        const byte_size lfb = byteLevelLfb(0, i);
+        const byte_size lfb = byteLevelLfb(level, i);
 
         if (lfb < selectedLfb && lfb >= basicBlocks.value())
         {
@@ -502,8 +550,13 @@ void LeanTreeAllocator::setSolidBit(uint8_t level, count_t index)
 byte_size LeanTreeAllocator::lowerLevelLfb(uint8_t level, count_t index) const
 {
     // TODO: Possible optimization -> Use a table for the first levels.
+    // Up to level 2 would require 16 entries. But 256 entries for level 3 (this one is perhaps too
+    // much).
     if (level == 0)
-        return (byte_size)getBit(reinterpret_cast<unsigned*>(m_header->levels[0]), index);
+    {
+        const bool used = getBit(reinterpret_cast<unsigned*>(m_header->levels[0]), index);
+        return used ? 0 : 1;
+    }
 
     const bool solid = getBit(reinterpret_cast<unsigned*>(m_header->levels[level]), index);
 
@@ -604,7 +657,11 @@ Power2 LeanTreeAllocator::freeAtBlock(count_t basicBlockIndex, uint8_t level)
         const bool solid = getBitLevelValue(level, blockIndex);
 
         if (!solid)
-            return freeAtBlock(basicBlockIndex, level - 1);
+        {
+            const Power2 result = freeAtBlock(basicBlockIndex, level - 1);
+            coalesce(basicBlockIndex >> level, level);
+            return result;
+        }
         else
         {
             if (basicBlockIndex % Power2::from_log2(level) != 0)
@@ -632,7 +689,223 @@ Power2 LeanTreeAllocator::freeAtBlock(count_t basicBlockIndex, uint8_t level)
             return Power2::from_log2(level);
         }
         else
-            return freeAtBlock(basicBlockIndex, level - 1);
+        {
+            const Power2 result = freeAtBlock(basicBlockIndex, level - 1);
+            coalesce(basicBlockIndex >> level, level);
+            return result;
+        }
+    }
+}
+
+bool LeanTreeAllocator::validate(std::ostream& log) const
+{
+    bool allOk = true;
+
+    if (!m_header || !m_header->data || !m_header->levels)
+    {
+        log << "[ERROR] Null header, data or levels pointer\n";
+        return false;
+    }
+
+    const uint8_t nLevels = levelCount(m_header->params);
+    const uint8_t topLevelIdx = topLevel();
+    const count_t topBlocksCount = (count_t)topLevelBlocksCount().value();
+
+    if (topLevelIdx + 1 != nLevels)
+    {
+        log << "[ERROR] Top level (" << int(topLevelIdx) << ") doesn't match levels count ("
+            << int(nLevels) << ")\n";
+        allOk = false;
+    }
+
+    // Validate blocks, recursively.
+    for (count_t root = 0; root < topBlocksCount; ++root)
+        allOk &= validateLevel(topLevelIdx, root, log);
+
+    allOk &= validateStats(log);
+
+    return allOk;
+}
+
+static std::ostream& reportBlockLocation(uint8_t level, count_t index, std::ostream& log)
+{
+    log << " level=" << unsigned(level) << " index=" << index;
+    return log;
+}
+
+bool LeanTreeAllocator::validateLevel(uint8_t level, count_t index, std::ostream& log) const
+{
+    if (level == 0)
+        return true;
+
+    if (level < kBitLevelCount)
+    {
+        bool ok = true;
+
+        const bool isSolid = getBitLevelValue(level, index);
+
+        if (isSolid)
+            ok &= validateSolidBlock(level, index, log);
+
+        // Always check children. If bit levels are active, they are active from top to bottom.
+        ok &= validateLevel(level - 1, index * 2 + 0, log);
+        ok &= validateLevel(level - 1, index * 2 + 1, log);
+
+        return ok;
+    }
+    else
+    {
+        // validateByteNode will recursively call this function (if required) to validate its children.
+        return validateByteNode(level, index, log);
+    }
+}
+
+bool LeanTreeAllocator::validateSolidBlock(uint8_t level, count_t index, std::ostream& log) const
+{
+    // A solid block must have all its basic blocks in the same state at level 0
+    const count_t baseIndex = index << level;
+    const count_t blockSize = count_t(1) << level;
+    const unsigned mask = (unsigned(1) << blockSize) - 1;
+    const unsigned* level0 = (const unsigned*)m_header->levels[0];
+    const unsigned basicBlockBits = getBits(level0, baseIndex, blockSize);
+    const bool firstUsed = getBitLevelValue(0, baseIndex);
+
+    if (basicBlockBits == 0 || basicBlockBits == mask)
+        return true;
+
+    log << "[ERROR] Solid block at";
+    reportBlockLocation(level, index, log);
+    log << " has inconsistent level-0 bits: 0x" << std::hex << basicBlockBits << std::dec << "\n";
+
+    return false;
+}
+
+bool LeanTreeAllocator::validateByteNode(uint8_t level, count_t index, std::ostream& log) const
+{
+    const uint8_t nodeValue = m_header->levels[level][index];
+    const uint8_t partialMask = uint8_t(ByteNode::PartialBit);
+    const uint8_t solidMask = uint8_t(ByteNode::PartialBit) | uint8_t(ByteNode::SolidBit);
+
+    // Solid blocks do not require further check
+    if (nodeValue == uint8_t(ByteNode::FreeSolid) || nodeValue == uint8_t(ByteNode::FullSolid))
+        return true;
+
+    byte_size leftLfb, rightLfb;
+
+    if (level == kBitLevelCount)
+    {
+        leftLfb = lowerLevelLfb(level - 1, index * 2 + 0);
+        rightLfb = lowerLevelLfb(level - 1, index * 2 + 1);
+    }
+    else
+    {
+        leftLfb = byteLevelLfb(level - 1, index * 2 + 0);
+        rightLfb = byteLevelLfb(level - 1, index * 2 + 1);
+    }
+
+    bool ok = true;
+
+    if (nodeValue == uint8_t(ByteNode::FullFragmented))
+    {
+        if (leftLfb != 0 || rightLfb != 0)
+        {
+            log << "[ERROR] Invalid ByteNode at";
+            reportBlockLocation(level, index, log)
+                << ". It is marked as full, but its children have some free space (" << leftLfb << ", "
+                << rightLfb << ")\n";
+            ok = false;
+        }
+    }
+    else if ((nodeValue & partialMask) != 0)
+    {
+        // Partial nodes: PartialBit + log2 value
+        const Power2 nodeLfb = Power2::from_log2(nodeValue & ~partialMask);
+
+        if (nodeLfb.value() != std::max(leftLfb, rightLfb))
+        {
+            log << "[ERROR] Invalid ByteNode at";
+            reportBlockLocation(level, index, log);
+            log << ". Its largest free block value (" << nodeLfb.value()
+                << ") does not match its children (" << leftLfb << ", " << rightLfb << ")\n";
+
+            ok = false;
+        }
+        else if (leftLfb == rightLfb && leftLfb == byte_size(1) << (level - 1))
+        {
+            log << "[ERROR] Invalid ByteNode at";
+            reportBlockLocation(level, index, log);
+            log << ". Both children are fully free and the node is marked as 'partial'\n";
+
+            ok = false;
+        }
+    }
+    else
+    {
+        log << "[ERROR] Unexpected ByteNode value (0x" << std::hex << nodeValue << std::dec << ") at";
+        reportBlockLocation(level, index, log) << "\n";
+        ok = false;
+    }
+
+    // Validate children for non-solid nodes.
+    ok &= validateLevel(level - 1, index * 2 + 0, log);
+    ok &= validateLevel(level - 1, index * 2 + 1, log);
+
+    return ok;
+}
+
+bool LeanTreeAllocator::validateStats(std::ostream& log) const
+{
+    const uint8_t topLevelIdx = topLevel();
+    const count_t topBlocksCount = (count_t)topLevelBlocksCount().value();
+    count_t usedBlocksCount = 0;
+
+    for (count_t i = 0; i < topBlocksCount; ++i)
+        usedBlocksCount += countUsedBlocks(topLevelIdx, i);
+
+    const byte_size usedBytes = usedBlocksCount * m_header->params.basicBlockSize.value();
+
+    if (usedBytes != m_stats.bytesUsed + m_stats.metaDataSize)
+    {
+        log << "[ERROR]: Used bytes count mismatch. Metadata (" << m_stats.metaDataSize
+            << ") + bytesUsed (" << m_stats.bytesUsed << ") != RealUsedCount (" << usedBytes << ")\n";
+        return false;
+    }
+
+    return true;
+}
+
+count_t LeanTreeAllocator::countUsedBlocks(uint8_t level, count_t levelIndex) const
+{
+    if (level < kBitLevelCount)
+    {
+        // At lower (bit) levels, just count bits
+        const unsigned bitCount = 1 << level;
+        const unsigned* level0 = (const unsigned*)m_header->levels[0];
+        unsigned bits = getBits(level0, levelIndex << level, bitCount);
+        count_t usedCount = 0;
+
+        for (; bits != 0; bits >>= 1)
+            usedCount += bits & 1;
+
+        return usedCount;
+    }
+    else
+    {
+        const uint8_t nodeValue = m_header->levels[level][levelIndex];
+
+        if (0 == (nodeValue & uint8_t(ByteNode::PartialBit)))
+        {
+            if (nodeValue & uint8_t(ByteNode::UsedBit))
+                return count_t(1) << level;
+            else
+                return 0;
+        }
+        else
+        {
+            // Check children for partially used nodes;
+            return countUsedBlocks(level - 1, levelIndex * 2 + 0)
+                + countUsedBlocks(level - 1, levelIndex * 2 + 1);
+        }
     }
 }
 

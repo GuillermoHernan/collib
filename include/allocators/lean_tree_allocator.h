@@ -49,6 +49,8 @@ public:
         byte_size bytesUsed = 0;
         byte_size largestFreeBlock = 0;
         byte_size metaDataSize = 0;
+
+        auto operator<=>(const Stats& rhs) const = default;
     };
 
     struct Limits
@@ -67,7 +69,7 @@ public:
     Stats stats() const;
     Parameters params() const { return m_header->params; }
 
-    bool validate() const;
+    bool validate(std::ostream& errorLog) const;
     void dumpToCsv(std::ostream& csv, char separator = ';') const;
 
 private:
@@ -96,8 +98,19 @@ private:
     void setupHeader(uint8_t* rawMemory, const Parameters& params);
     void allocMetadata(byte_size size);
     Power2 freeAtBlock(count_t basicBlockIndex, uint8_t level);
+    bool canCoalesce(count_t levelIndex, uint8_t level) const;
+    void coalesce(count_t levelIndex, uint8_t level);
 
     void dumpSolidBlocks(uint8_t level, count_t index, char separator, std::ostream& csv) const;
+
+    // Validation code
+    //*****************
+    bool validateLevel(uint8_t level, count_t index, std::ostream& log) const;
+    bool validateSolidBlock(uint8_t level, count_t index, std::ostream& log) const;
+    bool validateByteNode(uint8_t level, count_t index, std::ostream& log) const;
+    bool validateStats(std::ostream& log) const;
+    count_t countUsedBlocks(uint8_t level, count_t levelIndex)const;
+    //*****************
 
     IAllocator& m_backing;
     SHeader* m_header;

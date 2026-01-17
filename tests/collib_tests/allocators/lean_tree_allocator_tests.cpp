@@ -21,6 +21,7 @@
  */
 
 #include "pch-collib-tests.h"
+#include "darray.h"
 #include "allocators/lean_tree_allocator.h"
 #include <vector>
 #include <cstring>
@@ -39,12 +40,12 @@ public:
     SAllocResult alloc(byte_size bytes, align a) override
     {
         if (shouldFail)
-            return { nullptr, 0 };
+            return {nullptr, 0};
 
         const byte_size corrected = a.round_up(bytes);
         void* ptr = std::malloc(corrected);
         allocatedBlocks.push_back(ptr);
-        return { ptr, corrected };
+        return {ptr, corrected};
     }
 
     void free(void* p) override
@@ -92,20 +93,23 @@ TEST_CASE("LeanTreeAllocator alloc and free", "[allocator][lean_tree][alloc]")
         REQUIRE(r1.buffer != nullptr);
         auto s1 = allocator.stats();
         CHECK(s1.bytesUsed > s0.bytesUsed);
-        allocator.dumpToCsv(std::cerr);
+        //allocator.dumpToCsv(std::cerr);
+        REQUIRE(allocator.validate(std::cerr));
 
         auto r2 = allocator.alloc(128, align::system());
         REQUIRE(r2.buffer != nullptr);
         auto s2 = allocator.stats();
         CHECK(s2.bytesUsed > s1.bytesUsed);
         std::cerr << std::endl;
-        allocator.dumpToCsv(std::cerr);
+        REQUIRE(allocator.validate(std::cerr));
+        //allocator.dumpToCsv(std::cerr);
 
         allocator.free(r1.buffer);
         auto s3 = allocator.stats();
         CHECK(s3.bytesUsed < s2.bytesUsed);
         std::cerr << std::endl;
-        allocator.dumpToCsv(std::cerr);
+        //allocator.dumpToCsv(std::cerr);
+        REQUIRE(allocator.validate(std::cerr));
     }
 
     SECTION("Multiple blocks have different addresses")
@@ -203,6 +207,41 @@ TEST_CASE("LeanTreeAllocator fragmentation and reuse", "[allocator][lean_tree][r
     }
 
     allocator.free(b.buffer);
+}
+
+TEST_CASE("Coalesce freed blocks", "[allocator][lean_tree][coalesce]")
+{
+    DummyAllocator backing;
+    LeanTreeAllocator allocator(backing);
+
+    const size_t basicBlockSize = allocator.params().basicBlockSize.value();
+    const auto initialStats = allocator.stats();
+    darray<void*> allocations;
+
+    // Allocate until exhausted
+    while (true)
+    {
+        const auto [buffer, size] = allocator.alloc(1, align::from_bytes(1));
+
+        if (buffer == nullptr)
+            break;
+
+        // Allocating 1 byte should allocate a whole basic block (it is the minimum)
+        CHECK(size == basicBlockSize);
+
+        allocations.push_back(buffer);
+    }
+
+    const auto statsAfterAlloc = allocator.stats();
+    CHECK(statsAfterAlloc.largestFreeBlock == 0);
+    CHECK(statsAfterAlloc.metaDataSize == initialStats.metaDataSize);
+
+    // Free everything
+    for (void* buffer : allocations)
+        allocator.free(buffer);
+
+    const auto finalStats = allocator.stats();
+    CHECK(initialStats == finalStats);
 }
 
 // -------------------------------------------------------------
